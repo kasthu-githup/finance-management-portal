@@ -5,13 +5,23 @@ import {
 
 import { auth } from "./firebase-config.js";
 
-/* =====================================
-   PRODUCTION API
-   Same Render domain → /api/login
-===================================== */
 
-const LOGIN_API = "/api/login";
+/* =========================================
+   API URL
+   Local → localhost backend
+   Render → same domain /api
+========================================= */
 
+const LOGIN_API =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1"
+        ? "http://localhost:5000/api/login"
+        : "/api/login";
+
+
+/* =========================================
+   DOM ELEMENTS
+========================================= */
 
 const loginForm =
     document.getElementById("loginForm");
@@ -29,9 +39,9 @@ const rememberMe =
     document.getElementById("rememberMe");
 
 
-/* =====================================
-   NORMAL EMAIL + PASSWORD LOGIN
-===================================== */
+/* =========================================
+   EMAIL + PASSWORD LOGIN
+========================================= */
 
 loginForm.addEventListener(
     "submit",
@@ -50,6 +60,10 @@ loginForm.addEventListener(
                 .getElementById("password")
                 .value;
 
+
+        /* -------------------------------
+           Validation
+        ------------------------------- */
 
         if (!email || !password) {
 
@@ -70,6 +84,10 @@ loginForm.addEventListener(
                 "Signing in...";
 
 
+            /* -------------------------------
+               API Request
+            ------------------------------- */
+
             const response =
                 await fetch(
                     LOGIN_API,
@@ -89,9 +107,17 @@ loginForm.addEventListener(
                 );
 
 
+            /* -------------------------------
+               Read Response
+            ------------------------------- */
+
             const data =
                 await response.json();
 
+
+            /* -------------------------------
+               Login Failed
+            ------------------------------- */
 
             if (
                 !response.ok ||
@@ -100,17 +126,25 @@ loginForm.addEventListener(
 
                 throw new Error(
                     data.message ||
-                    "Login failed"
+                    "Invalid email or password."
                 );
 
             }
 
+
+            /* -------------------------------
+               Save Login
+            ------------------------------- */
 
             saveLoginData(
                 data.token,
                 data.user
             );
 
+
+            /* -------------------------------
+               Success
+            ------------------------------- */
 
             showMessage(
                 "Login successful. Redirecting...",
@@ -134,11 +168,29 @@ loginForm.addEventListener(
             );
 
 
-            showMessage(
-                error.message ||
-                "Unable to login.",
-                "error"
-            );
+            /* -------------------------------
+               Network Error
+            ------------------------------- */
+
+            if (
+                error.name ===
+                "TypeError"
+            ) {
+
+                showMessage(
+                    "Unable to connect to the server. Please try again.",
+                    "error"
+                );
+
+            } else {
+
+                showMessage(
+                    error.message ||
+                    "Unable to login.",
+                    "error"
+                );
+
+            }
 
 
         } finally {
@@ -154,9 +206,9 @@ loginForm.addEventListener(
 );
 
 
-/* =====================================
-   GOOGLE LOGIN
-===================================== */
+/* =========================================
+   GOOGLE SIGN-IN
+========================================= */
 
 googleBtn.addEventListener(
     "click",
@@ -170,9 +222,22 @@ googleBtn.addEventListener(
                 "Connecting to Google...";
 
 
+            /* -------------------------------
+               Google Provider
+            ------------------------------- */
+
             const provider =
                 new GoogleAuthProvider();
 
+
+            provider.setCustomParameters({
+                prompt: "select_account"
+            });
+
+
+            /* -------------------------------
+               Firebase Google Login
+            ------------------------------- */
 
             const result =
                 await signInWithPopup(
@@ -185,9 +250,17 @@ googleBtn.addEventListener(
                 result.user;
 
 
+            /* -------------------------------
+               Firebase Token
+            ------------------------------- */
+
             const firebaseToken =
                 await user.getIdToken();
 
+
+            /* -------------------------------
+               Google User Data
+            ------------------------------- */
 
             const googleUser = {
 
@@ -199,18 +272,27 @@ googleBtn.addEventListener(
                     "Google User",
 
                 email:
-                    user.email || "",
+                    user.email ||
+                    "",
 
                 role:
                     "Admin",
 
                 photoURL:
-                    user.photoURL || ""
+                    user.photoURL ||
+                    ""
 
             };
 
 
-            if (rememberMe.checked) {
+            /* -------------------------------
+               Save Google Login
+            ------------------------------- */
+
+            if (
+                rememberMe &&
+                rememberMe.checked
+            ) {
 
                 localStorage.setItem(
                     "finance_token",
@@ -222,6 +304,17 @@ googleBtn.addEventListener(
                     JSON.stringify(
                         googleUser
                     )
+                );
+
+
+                /* Clear old session */
+
+                sessionStorage.removeItem(
+                    "finance_token"
+                );
+
+                sessionStorage.removeItem(
+                    "finance_user"
                 );
 
             } else {
@@ -238,8 +331,23 @@ googleBtn.addEventListener(
                     )
                 );
 
+
+                /* Clear old local login */
+
+                localStorage.removeItem(
+                    "finance_token"
+                );
+
+                localStorage.removeItem(
+                    "finance_user"
+                );
+
             }
 
+
+            /* -------------------------------
+               Success Message
+            ------------------------------- */
 
             showMessage(
                 "Google login successful. Redirecting...",
@@ -267,29 +375,81 @@ googleBtn.addEventListener(
                 "Google Sign-In failed.";
 
 
-            if (
-                error.code ===
-                "auth/popup-closed-by-user"
-            ) {
+            /* -------------------------------
+               Firebase Error Handling
+            ------------------------------- */
 
-                message =
-                    "Google Sign-In window was closed.";
+            switch (error.code) {
 
-            } else if (
-                error.code ===
-                "auth/popup-blocked"
-            ) {
+                case "auth/popup-closed-by-user":
 
-                message =
-                    "Browser blocked the Google Sign-In popup.";
+                    message =
+                        "Google Sign-In window was closed.";
 
-            } else if (
-                error.code ===
-                "auth/operation-not-allowed"
-            ) {
+                    break;
 
-                message =
-                    "Google Sign-In is not enabled in Firebase Authentication.";
+
+                case "auth/popup-blocked":
+
+                    message =
+                        "Browser blocked the Google Sign-In popup.";
+
+                    break;
+
+
+                case "auth/operation-not-allowed":
+
+                    message =
+                        "Google Sign-In is not enabled in Firebase Authentication.";
+
+                    break;
+
+
+                case "auth/unauthorized-domain":
+
+                    message =
+                        "This website domain is not authorized in Firebase.";
+
+                    break;
+
+
+                case "auth/invalid-api-key":
+
+                    message =
+                        "Firebase API configuration is invalid.";
+
+                    break;
+
+
+                case "auth/network-request-failed":
+
+                    message =
+                        "Network error. Please check your internet connection.";
+
+                    break;
+
+
+                case "auth/cancelled-popup-request":
+
+                    message =
+                        "Another Google Sign-In request is already running.";
+
+                    break;
+
+
+                default:
+
+                    if (
+                        error.message
+                    ) {
+
+                        console.error(
+                            error.message
+                        );
+
+                    }
+
+                    break;
 
             }
 
@@ -314,16 +474,19 @@ googleBtn.addEventListener(
 );
 
 
-/* =====================================
+/* =========================================
    SAVE LOGIN DATA
-===================================== */
+========================================= */
 
 function saveLoginData(
     token,
     user
 ) {
 
-    if (rememberMe.checked) {
+    if (
+        rememberMe &&
+        rememberMe.checked
+    ) {
 
         localStorage.setItem(
             "finance_token",
@@ -333,6 +496,17 @@ function saveLoginData(
         localStorage.setItem(
             "finance_user",
             JSON.stringify(user)
+        );
+
+
+        /* Clear old session */
+
+        sessionStorage.removeItem(
+            "finance_token"
+        );
+
+        sessionStorage.removeItem(
+            "finance_user"
         );
 
     } else {
@@ -347,22 +521,39 @@ function saveLoginData(
             JSON.stringify(user)
         );
 
+
+        /* Clear old local login */
+
+        localStorage.removeItem(
+            "finance_token"
+        );
+
+        localStorage.removeItem(
+            "finance_user"
+        );
+
     }
 
 }
 
 
-/* =====================================
-   MESSAGE
-===================================== */
+/* =========================================
+   SHOW MESSAGE
+========================================= */
 
 function showMessage(
     message,
     type
 ) {
 
+    if (!messageElement) {
+        return;
+    }
+
+
     messageElement.textContent =
         message;
+
 
     messageElement.className =
         `message ${type}`;
