@@ -5,9 +5,12 @@ import {
 
 import { auth } from "./firebase-config.js";
 
+/* =====================================
+   PRODUCTION API
+   Same Render domain → /api/login
+===================================== */
 
-const LOGIN_API =
-    "http://localhost:5000/api/login";
+const LOGIN_API = "/api/login";
 
 
 const loginForm =
@@ -116,8 +119,10 @@ loginForm.addEventListener(
 
 
             setTimeout(() => {
+
                 window.location.href =
                     "index.html";
+
             }, 700);
 
 
@@ -205,15 +210,6 @@ googleBtn.addEventListener(
             };
 
 
-            /*
-             * Save Firebase ID token
-             * as the current portal token.
-             *
-             * Your existing auth.js checks
-             * for finance_token before
-             * opening protected pages.
-             */
-
             if (rememberMe.checked) {
 
                 localStorage.setItem(
@@ -241,6 +237,7 @@ googleBtn.addEventListener(
                         googleUser
                     )
                 );
+
             }
 
 
@@ -349,6 +346,7 @@ function saveLoginData(
             "finance_user",
             JSON.stringify(user)
         );
+
     }
 
 }
