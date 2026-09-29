@@ -1,4 +1,8 @@
-const API_URL = "http://localhost:5000/api";
+const API_URL =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1"
+        ? "http://localhost:5000/api"
+        : "/api";
 
 const paymentForm = document.getElementById("paymentForm");
 const invoiceSelect = document.getElementById("invoice");
@@ -31,102 +35,78 @@ async function initializePage() {
 }
 
 function setTodayDate() {
-
     const today = new Date();
 
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, "0");
     const day = String(today.getDate()).padStart(2, "0");
 
-    paymentDateInput.value =
-        `${year}-${month}-${day}`;
+    paymentDateInput.value = `${year}-${month}-${day}`;
 }
 
 async function loadInvoices() {
-
     try {
-
-        const response =
-            await fetch(`${API_URL}/invoices`);
+        const response = await fetch(`${API_URL}/invoices`);
 
         if (!response.ok) {
-            throw new Error(
-                `Invoice API error: ${response.status}`
-            );
+            throw new Error(`Invoice API error: ${response.status}`);
         }
 
-        const data =
-            await response.json();
+        const data = await response.json();
 
         if (!data.success) {
-            throw new Error(
-                data.message ||
-                "Unable to load invoices"
-            );
+            throw new Error(data.message || "Unable to load invoices");
         }
 
-        invoices =
-            data.invoices || [];
+        invoices = data.invoices || [];
 
         renderInvoiceOptions();
-
     } catch (error) {
+        console.error("Invoice loading error:", error);
 
-        console.error(
-            "Invoice loading error:",
-            error
-        );
-
-        invoiceSelect.innerHTML =
-            `<option value="">
+        invoiceSelect.innerHTML = `
+            <option value="">
                 Unable to load invoices
-            </option>`;
+            </option>
+        `;
     }
 }
 
 function renderInvoiceOptions() {
-
-    invoiceSelect.innerHTML =
-        `<option value="">
+    invoiceSelect.innerHTML = `
+        <option value="">
             Select Invoice
-        </option>`;
+        </option>
+    `;
 
     invoices.forEach(invoice => {
-
-        const status =
-            String(
-                invoice.status ||
-                "pending"
-            ).toLowerCase();
+        const status = String(
+            invoice.status || "pending"
+        ).toLowerCase();
 
         if (status === "cancelled") {
             return;
         }
 
-        const invoiceAmount =
-            Number(invoice.amount || 0);
+        const invoiceAmount = Number(invoice.amount || 0);
 
-        const paid =
+        const paid = Number(
+            invoice.total_paid ??
+            invoice.paid_amount ??
+            0
+        );
+
+        const balance = Math.max(
             Number(
-                invoice.total_paid ??
-                invoice.paid_amount ??
-                0
-            );
+                invoice.balance_due ??
+                (invoiceAmount - paid)
+            ),
+            0
+        );
 
-        const balance =
-            Math.max(
-                Number(
-                    invoice.balance_due ??
-                    (invoiceAmount - paid)
-                ),
-                0
-            );
+        const option = document.createElement("option");
 
-        const option =
-            document.createElement("option");
-
-        option.value =
-            invoice.id;
+        option.value = invoice.id;
 
         let text =
             `${invoice.invoice_number || `#${invoice.id}`} — ` +
@@ -134,11 +114,9 @@ function renderInvoiceOptions() {
             `₹${formatMoney(invoiceAmount)}`;
 
         if (balance > 0) {
-            text +=
-                ` — Balance ₹${formatMoney(balance)}`;
+            text += ` — Balance ₹${formatMoney(balance)}`;
         } else {
-            text +=
-                ` — Fully Paid`;
+            text += ` — Fully Paid`;
         }
 
         option.textContent = text;
@@ -155,9 +133,7 @@ function renderInvoiceOptions() {
 }
 
 async function loadPayments() {
-
     try {
-
         paymentTableBody.innerHTML = `
             <tr>
                 <td colspan="9" class="loading-cell">
@@ -166,42 +142,28 @@ async function loadPayments() {
             </tr>
         `;
 
-        const response =
-            await fetch(`${API_URL}/payments`);
+        const response = await fetch(`${API_URL}/payments`);
 
         if (!response.ok) {
-            throw new Error(
-                `Payment API error: ${response.status}`
-            );
+            throw new Error(`Payment API error: ${response.status}`);
         }
 
-        const data =
-            await response.json();
+        const data = await response.json();
 
         if (!data.success) {
             throw new Error(
-                data.message ||
-                "Unable to load payments"
+                data.message || "Unable to load payments"
             );
         }
 
-        payments =
-            data.payments || [];
+        payments = data.payments || [];
 
         renderPayments();
-
     } catch (error) {
+        console.error("Payment loading error:", error);
 
-        console.error(
-            "Payment loading error:",
-            error
-        );
-
-        totalPaymentsElement.textContent =
-            "₹0.00";
-
-        totalTransactionsElement.textContent =
-            "0";
+        totalPaymentsElement.textContent = "₹0.00";
+        totalTransactionsElement.textContent = "0";
 
         paymentTableBody.innerHTML = `
             <tr>
@@ -214,27 +176,23 @@ async function loadPayments() {
 }
 
 function renderPayments() {
+    totalTransactionsElement.textContent = payments.length;
 
-    totalTransactionsElement.textContent =
-        payments.length;
-
-    const totalPayments =
-        payments.reduce(
-            (sum, payment) =>
-                sum +
-                Number(
-                    payment.amount ??
-                    payment.payment_amount ??
-                    0
-                ),
-            0
-        );
+    const totalPayments = payments.reduce(
+        (sum, payment) =>
+            sum +
+            Number(
+                payment.amount ??
+                payment.payment_amount ??
+                0
+            ),
+        0
+    );
 
     totalPaymentsElement.textContent =
         `₹${formatMoney(totalPayments)}`;
 
     if (payments.length === 0) {
-
         paymentTableBody.innerHTML = `
             <tr>
                 <td colspan="9" class="empty-cell">
@@ -249,51 +207,39 @@ function renderPayments() {
     paymentTableBody.innerHTML = "";
 
     payments.forEach(payment => {
+        const invoiceAmount = Number(
+            payment.invoice_amount ?? 0
+        );
 
-        const invoiceAmount =
-            Number(
-                payment.invoice_amount ??
+        const paymentAmount = Number(
+            payment.amount ??
+            payment.payment_amount ??
+            0
+        );
+
+        const balance = Number(
+            payment.balance_due ??
+            Math.max(
+                invoiceAmount - paymentAmount,
                 0
-            );
-
-        const paymentAmount =
-            Number(
-                payment.amount ??
-                payment.payment_amount ??
-                0
-            );
-
-        const balance =
-            Number(
-                payment.balance_due ??
-                Math.max(
-                    invoiceAmount -
-                    paymentAmount,
-                    0
-                )
-            );
+            )
+        );
 
         const invoiceNumber =
-            payment.invoice_number ||
-            "-";
+            payment.invoice_number || "-";
 
         const customerName =
-            payment.customer_name ||
-            "-";
+            payment.customer_name || "-";
 
         const paymentDate =
-            payment.payment_date ||
-            "";
+            payment.payment_date || "";
 
         const paymentMethod =
-            payment.payment_method ||
-            "-";
+            payment.payment_method || "-";
 
-        const row =
-            document.createElement("tr");
+        const row = document.createElement("tr");
 
         row.innerHTML = `
-
             <td>
                 ${escapeHtml(payment.id)}
             </td>
@@ -337,7 +283,6 @@ function renderPayments() {
             </td>
 
             <td>
-
                 <div class="action-buttons">
 
                     <button
@@ -365,7 +310,6 @@ function renderPayments() {
                     </button>
 
                 </div>
-
             </td>
         `;
 
@@ -373,256 +317,173 @@ function renderPayments() {
     });
 
     document.querySelectorAll(".edit-btn").forEach(button => {
-
         button.addEventListener("click", () => {
-            editPayment(
-                Number(button.dataset.id)
-            );
+            editPayment(Number(button.dataset.id));
         });
-
     });
 
     document.querySelectorAll(".delete-btn").forEach(button => {
-
         button.addEventListener("click", () => {
-            deletePayment(
-                Number(button.dataset.id)
-            );
+            deletePayment(Number(button.dataset.id));
         });
-
     });
 
     document.querySelectorAll(".print-btn").forEach(button => {
-
         button.addEventListener("click", () => {
-            printPayment(
-                Number(button.dataset.id)
-            );
+            printPayment(Number(button.dataset.id));
         });
-
     });
 }
 
-paymentForm.addEventListener(
-    "submit",
-    async event => {
+paymentForm.addEventListener("submit", async event => {
+    event.preventDefault();
 
-        event.preventDefault();
+    const invoiceId = Number(invoiceSelect.value);
+    const amount = Number(paymentAmountInput.value);
+    const paymentDate = paymentDateInput.value;
+    const paymentMethod = paymentMethodSelect.value;
 
-        const invoiceId =
-            Number(invoiceSelect.value);
+    if (!invoiceId) {
+        alert("Please select an invoice.");
+        return;
+    }
 
-        const amount =
+    if (!Number.isFinite(amount) || amount <= 0) {
+        alert("Please enter a valid payment amount.");
+        return;
+    }
+
+    if (!paymentDate) {
+        alert("Please select payment date.");
+        return;
+    }
+
+    if (!paymentMethod) {
+        alert("Please select payment method.");
+        return;
+    }
+
+    const selectedInvoice = invoices.find(
+        invoice => Number(invoice.id) === invoiceId
+    );
+
+    if (selectedInvoice) {
+        const invoiceAmount =
+            Number(selectedInvoice.amount || 0);
+
+        const invoicePaid =
+            Number(selectedInvoice.total_paid ?? 0);
+
+        let availableBalance =
             Number(
-                paymentAmountInput.value
+                selectedInvoice.balance_due ??
+                (invoiceAmount - invoicePaid)
             );
 
-        const paymentDate =
-            paymentDateInput.value;
-
-        const paymentMethod =
-            paymentMethodSelect.value;
-
-        if (!invoiceId) {
-            alert("Please select an invoice.");
-            return;
-        }
-
-        if (
-            !Number.isFinite(amount) ||
-            amount <= 0
-        ) {
-            alert(
-                "Please enter a valid payment amount."
+        if (editingPaymentId) {
+            const oldPayment = payments.find(
+                payment =>
+                    Number(payment.id) ===
+                    Number(editingPaymentId)
             );
-            return;
-        }
-
-        if (!paymentDate) {
-            alert(
-                "Please select payment date."
-            );
-            return;
-        }
-
-        if (!paymentMethod) {
-            alert(
-                "Please select payment method."
-            );
-            return;
-        }
-
-        const selectedInvoice =
-            invoices.find(
-                invoice =>
-                    Number(invoice.id) ===
-                    invoiceId
-            );
-
-        if (selectedInvoice) {
-
-            const invoiceAmount =
-                Number(
-                    selectedInvoice.amount || 0
-                );
-
-            const invoicePaid =
-                Number(
-                    selectedInvoice.total_paid ??
-                    0
-                );
-
-            let availableBalance =
-                Number(
-                    selectedInvoice.balance_due ??
-                    (invoiceAmount -
-                    invoicePaid)
-                );
-
-            if (editingPaymentId) {
-
-                const oldPayment =
-                    payments.find(
-                        payment =>
-                            Number(payment.id) ===
-                            Number(editingPaymentId)
-                    );
-
-                if (
-                    oldPayment &&
-                    Number(oldPayment.invoice_id) ===
-                    invoiceId
-                ) {
-
-                    availableBalance +=
-                        Number(
-                            oldPayment.amount || 0
-                        );
-                }
-            }
 
             if (
-                amount >
-                availableBalance
+                oldPayment &&
+                Number(oldPayment.invoice_id) === invoiceId
             ) {
-
-                alert(
-                    `Payment exceeds the available balance.\n\n` +
-                    `Available Balance: ₹${formatMoney(
-                        availableBalance
-                    )}`
+                availableBalance += Number(
+                    oldPayment.amount || 0
                 );
-
-                return;
             }
         }
 
-        const payload = {
-            invoice_id: invoiceId,
-            amount,
-            payment_date: paymentDate,
-            payment_method: paymentMethod
-        };
-
-        try {
-
-            submitBtn.disabled = true;
-
-            let response;
-
-            if (editingPaymentId) {
-
-                response =
-                    await fetch(
-                        `${API_URL}/payments/${editingPaymentId}`,
-                        {
-                            method: "PUT",
-                            headers: {
-                                "Content-Type":
-                                    "application/json"
-                            },
-                            body:
-                                JSON.stringify(
-                                    payload
-                                )
-                        }
-                    );
-
-            } else {
-
-                response =
-                    await fetch(
-                        `${API_URL}/payments`,
-                        {
-                            method: "POST",
-                            headers: {
-                                "Content-Type":
-                                    "application/json"
-                            },
-                            body:
-                                JSON.stringify(
-                                    payload
-                                )
-                        }
-                    );
-            }
-
-            const data =
-                await response.json();
-
-            if (
-                !response.ok ||
-                !data.success
-            ) {
-                throw new Error(
-                    data.message ||
-                    "Unable to save payment."
-                );
-            }
-
+        if (amount > availableBalance) {
             alert(
-                editingPaymentId
-                    ? "Payment updated successfully."
-                    : "Payment added successfully."
+                `Payment exceeds the available balance.\n\n` +
+                `Available Balance: ₹${formatMoney(
+                    availableBalance
+                )}`
             );
 
-            resetForm();
-
-            await loadInvoices();
-            await loadPayments();
-
-        } catch (error) {
-
-            console.error(
-                "Payment save error:",
-                error
-            );
-
-            alert(error.message);
-
-        } finally {
-
-            submitBtn.disabled = false;
+            return;
         }
     }
-);
+
+    const payload = {
+        invoice_id: invoiceId,
+        amount,
+        payment_date: paymentDate,
+        payment_method: paymentMethod
+    };
+
+    try {
+        submitBtn.disabled = true;
+
+        let response;
+
+        if (editingPaymentId) {
+            response = await fetch(
+                `${API_URL}/payments/${editingPaymentId}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(payload)
+                }
+            );
+        } else {
+            response = await fetch(
+                `${API_URL}/payments`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(payload)
+                }
+            );
+        }
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            throw new Error(
+                data.message ||
+                "Unable to save payment."
+            );
+        }
+
+        alert(
+            editingPaymentId
+                ? "Payment updated successfully."
+                : "Payment added successfully."
+        );
+
+        resetForm();
+
+        await loadInvoices();
+        await loadPayments();
+
+    } catch (error) {
+        console.error("Payment save error:", error);
+        alert(error.message);
+    } finally {
+        submitBtn.disabled = false;
+    }
+});
 
 function editPayment(id) {
-
-    const payment =
-        payments.find(
-            item =>
-                Number(item.id) ===
-                Number(id)
-        );
+    const payment = payments.find(
+        item => Number(item.id) === Number(id)
+    );
 
     if (!payment) {
         alert("Payment not found.");
         return;
     }
 
-    editingPaymentId =
-        payment.id;
+    editingPaymentId = payment.id;
 
     renderInvoiceOptions();
 
@@ -635,16 +496,12 @@ function editPayment(id) {
         "";
 
     paymentDateInput.value =
-        normalizeDate(
-            payment.payment_date
-        );
+        normalizeDate(payment.payment_date);
 
     paymentMethodSelect.value =
-        payment.payment_method ||
-        "";
+        payment.payment_method || "";
 
-    formTitle.textContent =
-        "Edit Payment";
+    formTitle.textContent = "Edit Payment";
 
     formDescription.textContent =
         "Update the selected payment transaction.";
@@ -652,8 +509,7 @@ function editPayment(id) {
     submitBtn.textContent =
         "✓ Update Payment";
 
-    clearBtn.textContent =
-        "Cancel";
+    clearBtn.textContent = "Cancel";
 
     window.scrollTo({
         top: 0,
@@ -662,63 +518,47 @@ function editPayment(id) {
 }
 
 async function deletePayment(id) {
-
-    const payment =
-        payments.find(
-            item =>
-                Number(item.id) ===
-                Number(id)
-        );
+    const payment = payments.find(
+        item => Number(item.id) === Number(id)
+    );
 
     if (!payment) {
         alert("Payment not found.");
         return;
     }
 
-    const confirmed =
-        confirm(
-            `Delete this payment?\n\n` +
-            `Payment: ₹${formatMoney(
-                payment.amount
-            )}`
-        );
+    const confirmed = confirm(
+        `Delete this payment?\n\n` +
+        `Payment: ₹${formatMoney(payment.amount)}`
+    );
 
     if (!confirmed) {
         return;
     }
 
     try {
+        const response = await fetch(
+            `${API_URL}/payments/${id}`,
+            {
+                method: "DELETE"
+            }
+        );
 
-        const response =
-            await fetch(
-                `${API_URL}/payments/${id}`,
-                {
-                    method: "DELETE"
-                }
-            );
+        const data = await response.json();
 
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            !data.success
-        ) {
+        if (!response.ok || !data.success) {
             throw new Error(
                 data.message ||
                 "Unable to delete payment."
             );
         }
 
-        alert(
-            "Payment deleted successfully."
-        );
+        alert("Payment deleted successfully.");
 
         await loadInvoices();
         await loadPayments();
 
     } catch (error) {
-
         console.error(
             "Payment delete error:",
             error
@@ -728,19 +568,10 @@ async function deletePayment(id) {
     }
 }
 
-
-/* =========================================
-   PRINT PAYMENT RECEIPT
-========================================= */
-
 function printPayment(id) {
-
-    const payment =
-        payments.find(
-            item =>
-                Number(item.id) ===
-                Number(id)
-        );
+    const payment = payments.find(
+        item => Number(item.id) === Number(id)
+    );
 
     if (!payment) {
         alert("Payment not found.");
@@ -748,9 +579,7 @@ function printPayment(id) {
     }
 
     const invoiceAmount =
-        Number(
-            payment.invoice_amount || 0
-        );
+        Number(payment.invoice_amount || 0);
 
     const paymentAmount =
         Number(
@@ -763,43 +592,36 @@ function printPayment(id) {
         Number(
             payment.balance_due ??
             Math.max(
-                invoiceAmount -
-                paymentAmount,
+                invoiceAmount - paymentAmount,
                 0
             )
         );
 
     const invoiceNumber =
-        payment.invoice_number ||
-        "-";
+        payment.invoice_number || "-";
 
     const customerName =
-        payment.customer_name ||
-        "-";
+        payment.customer_name || "-";
 
     const paymentDate =
-        payment.payment_date ||
-        "";
+        payment.payment_date || "";
 
     const paymentMethod =
-        payment.payment_method ||
-        "-";
+        payment.payment_method || "-";
 
-
-    const printWindow =
-        window.open(
-            "",
-            "_blank",
-            "width=900,height=700"
-        );
+    const printWindow = window.open(
+        "",
+        "_blank",
+        "width=900,height=700"
+    );
 
     if (!printWindow) {
         alert(
             "Please allow pop-ups to print the receipt."
         );
+
         return;
     }
-
 
     printWindow.document.write(`
         <!DOCTYPE html>
@@ -953,7 +775,6 @@ function printPayment(id) {
 
                 </div>
 
-
                 <div class="info">
 
                     <div class="info-box">
@@ -968,7 +789,6 @@ function printPayment(id) {
 
                     </div>
 
-
                     <div class="info-box">
 
                         <div class="label">
@@ -981,7 +801,6 @@ function printPayment(id) {
 
                     </div>
 
-
                     <div class="info-box">
 
                         <div class="label">
@@ -993,7 +812,6 @@ function printPayment(id) {
                         </div>
 
                     </div>
-
 
                     <div class="info-box">
 
@@ -1008,7 +826,6 @@ function printPayment(id) {
                     </div>
 
                 </div>
-
 
                 <table>
 
@@ -1028,7 +845,6 @@ function printPayment(id) {
 
                     </thead>
 
-
                     <tbody>
 
                         <tr>
@@ -1042,7 +858,6 @@ function printPayment(id) {
                             </td>
 
                         </tr>
-
 
                         <tr>
 
@@ -1060,7 +875,6 @@ function printPayment(id) {
 
                 </table>
 
-
                 <div class="payment-total">
 
                     <span>
@@ -1073,23 +887,21 @@ function printPayment(id) {
 
                 </div>
 
-
                 <div class="balance">
 
                     Balance Due:
+
                     <strong>
                         ₹${formatMoney(balance)}
                     </strong>
 
                 </div>
 
-
                 <div class="footer">
                     Thank you for your payment.
                 </div>
 
             </div>
-
 
             <script>
 
@@ -1107,15 +919,11 @@ function printPayment(id) {
     printWindow.document.close();
 }
 
-clearBtn.addEventListener(
-    "click",
-    () => {
-        resetForm();
-    }
-);
+clearBtn.addEventListener("click", () => {
+    resetForm();
+});
 
 function resetForm() {
-
     editingPaymentId = null;
 
     paymentForm.reset();
@@ -1123,11 +931,9 @@ function resetForm() {
     setTodayDate();
 
     invoiceSelect.value = "";
-
     paymentMethodSelect.value = "";
 
-    formTitle.textContent =
-        "Add Payment";
+    formTitle.textContent = "Add Payment";
 
     formDescription.textContent =
         "Record a payment received for an invoice.";
@@ -1135,14 +941,12 @@ function resetForm() {
     submitBtn.textContent =
         "＋ Add Payment";
 
-    clearBtn.textContent =
-        "Clear";
+    clearBtn.textContent = "Clear";
 
     renderInvoiceOptions();
 }
 
 function formatMoney(value) {
-
     return Number(value || 0).toLocaleString(
         "en-IN",
         {
@@ -1153,13 +957,11 @@ function formatMoney(value) {
 }
 
 function formatDate(value) {
-
     if (!value) {
         return "-";
     }
 
-    const date =
-        new Date(value);
+    const date = new Date(value);
 
     if (Number.isNaN(date.getTime())) {
         return String(value).slice(0, 10);
@@ -1169,7 +971,6 @@ function formatDate(value) {
 }
 
 function normalizeDate(value) {
-
     if (!value) {
         return "";
     }
@@ -1178,7 +979,6 @@ function normalizeDate(value) {
 }
 
 function escapeHtml(value) {
-
     return String(value ?? "")
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
