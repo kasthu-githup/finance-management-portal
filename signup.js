@@ -6,9 +6,14 @@ import {
 import { auth } from "./firebase-config.js";
 
 
-/* =========================================
-   SIGNUP API
-========================================= */
+/* =========================================================
+   API
+   Local:
+   http://localhost:5000/api/signup
+
+   Render:
+   /api/signup
+========================================================= */
 
 const SIGNUP_API =
     window.location.hostname === "localhost" ||
@@ -17,317 +22,554 @@ const SIGNUP_API =
         : "/api/signup";
 
 
-/* =========================================
+/* =========================================================
    DOM ELEMENTS
-========================================= */
+========================================================= */
 
-const signupForm = document.getElementById("signupForm");
-const signupBtn = document.getElementById("signupBtn");
-const messageElement = document.getElementById("message");
-const googleBtn = document.getElementById("googleBtn");
+const signupForm =
+    document.getElementById("signupForm");
+
+const signupBtn =
+    document.getElementById("signupBtn");
+
+const googleBtn =
+    document.getElementById("googleBtn");
+
+const messageElement =
+    document.getElementById("message");
 
 
-/* =========================================
+/* =========================================================
+   CHECK REQUIRED ELEMENTS
+========================================================= */
+
+if (!signupForm) {
+    console.error("signupForm not found.");
+}
+
+if (!signupBtn) {
+    console.error("signupBtn not found.");
+}
+
+
+/* =========================================================
    EMAIL + PASSWORD SIGNUP
-========================================= */
+========================================================= */
 
-signupForm.addEventListener("submit", async (event) => {
+if (signupForm) {
 
-    event.preventDefault();
+    signupForm.addEventListener(
+        "submit",
+        async (event) => {
 
-    const name =
-        document.getElementById("name").value.trim();
+            event.preventDefault();
 
-    const email =
-        document.getElementById("email").value.trim();
+            const name =
+                document
+                    .getElementById("name")
+                    .value
+                    .trim();
 
-    const password =
-        document.getElementById("password").value;
+            const email =
+                document
+                    .getElementById("email")
+                    .value
+                    .trim()
+                    .toLowerCase();
 
-    const confirmPassword =
-        document.getElementById("confirmPassword").value;
+            const password =
+                document
+                    .getElementById("password")
+                    .value;
 
-    const terms =
-        document.getElementById("terms").checked;
+            const confirmPassword =
+                document
+                    .getElementById("confirmPassword")
+                    .value;
 
-
-    if (!name || !email || !password || !confirmPassword) {
-        showMessage(
-            "Please fill all required fields.",
-            "error"
-        );
-        return;
-    }
-
-
-    if (password.length < 6) {
-        showMessage(
-            "Password must be at least 6 characters.",
-            "error"
-        );
-        return;
-    }
-
-
-    if (password !== confirmPassword) {
-        showMessage(
-            "Passwords do not match.",
-            "error"
-        );
-        return;
-    }
+            const terms =
+                document
+                    .getElementById("terms")
+                    .checked;
 
 
-    if (!terms) {
-        showMessage(
-            "Please accept the registration terms.",
-            "error"
-        );
-        return;
-    }
+            /* -----------------------------------------
+               VALIDATION
+            ----------------------------------------- */
 
+            if (
+                !name ||
+                !email ||
+                !password ||
+                !confirmPassword
+            ) {
 
-    try {
+                showMessage(
+                    "Please fill in all required fields.",
+                    "error"
+                );
 
-        signupBtn.disabled = true;
-        signupBtn.textContent = "Creating account...";
-
-
-        const response = await fetch(
-            SIGNUP_API,
-            {
-                method: "POST",
-
-                headers: {
-                    "Content-Type": "application/json"
-                },
-
-                body: JSON.stringify({
-                    name,
-                    email,
-                    password
-                })
+                return;
             }
-        );
 
 
-        const data = await response.json();
+            if (name.length < 2) {
+
+                showMessage(
+                    "Please enter your full name.",
+                    "error"
+                );
+
+                return;
+            }
 
 
-        if (!response.ok || !data.success) {
-            throw new Error(
-                data.message || "Signup failed."
-            );
+            if (password.length < 6) {
+
+                showMessage(
+                    "Password must be at least 6 characters.",
+                    "error"
+                );
+
+                return;
+            }
+
+
+            if (password !== confirmPassword) {
+
+                showMessage(
+                    "Passwords do not match.",
+                    "error"
+                );
+
+                return;
+            }
+
+
+            if (!terms) {
+
+                showMessage(
+                    "Please accept the registration terms.",
+                    "error"
+                );
+
+                return;
+            }
+
+
+            try {
+
+                signupBtn.disabled = true;
+
+                signupBtn.textContent =
+                    "Creating Account...";
+
+                showMessage(
+                    "Creating your account...",
+                    "info"
+                );
+
+
+                /* -----------------------------------------
+                   API REQUEST
+                ----------------------------------------- */
+
+                const response =
+                    await fetch(
+                        SIGNUP_API,
+                        {
+                            method: "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
+
+                            body: JSON.stringify({
+                                name,
+                                email,
+                                password
+                            })
+                        }
+                    );
+
+
+                /* -----------------------------------------
+                   SAFE RESPONSE
+                ----------------------------------------- */
+
+                let data = {};
+
+                try {
+
+                    data =
+                        await response.json();
+
+                } catch {
+
+                    throw new Error(
+                        "Server returned an invalid response."
+                    );
+
+                }
+
+
+                /* -----------------------------------------
+                   API ERROR
+                ----------------------------------------- */
+
+                if (
+                    !response.ok ||
+                    !data.success
+                ) {
+
+                    throw new Error(
+                        data.message ||
+                        "Unable to create account."
+                    );
+
+                }
+
+
+                /* -----------------------------------------
+                   SUCCESS
+                ----------------------------------------- */
+
+                showMessage(
+                    "Account created successfully!",
+                    "success"
+                );
+
+
+                signupForm.reset();
+
+
+                /*
+                   Redirect to Login
+                */
+
+                setTimeout(() => {
+
+                    window.location.href =
+                        "login.html";
+
+                }, 1200);
+
+
+            } catch (error) {
+
+                console.error(
+                    "Signup Error:",
+                    error
+                );
+
+
+                if (
+                    error.name ===
+                    "TypeError"
+                ) {
+
+                    showMessage(
+                        "Unable to connect to the server. Please try again.",
+                        "error"
+                    );
+
+                } else {
+
+                    showMessage(
+                        error.message ||
+                        "Signup failed. Please try again.",
+                        "error"
+                    );
+
+                }
+
+
+            } finally {
+
+                signupBtn.disabled = false;
+
+                signupBtn.textContent =
+                    "Create Account";
+
+            }
+
         }
+    );
+
+}
 
 
-        showMessage(
-            "Account created successfully. Redirecting...",
-            "success"
-        );
-
-
-        signupForm.reset();
-
-
-        setTimeout(() => {
-            window.location.href = "login.html";
-        }, 1000);
-
-
-    } catch (error) {
-
-        console.error("Signup error:", error);
-
-        showMessage(
-            error.message ||
-            "Unable to create account.",
-            "error"
-        );
-
-    } finally {
-
-        signupBtn.disabled = false;
-        signupBtn.textContent = "Create Account";
-
-    }
-
-});
-
-
-/* =========================================
+/* =========================================================
    GOOGLE SIGN-IN
-========================================= */
+========================================================= */
 
-googleBtn.addEventListener("click", async () => {
+if (googleBtn) {
 
-    try {
+    googleBtn.addEventListener(
+        "click",
+        async () => {
 
-        googleBtn.disabled = true;
+            try {
 
-        googleBtn.textContent =
-            "Connecting to Google...";
+                googleBtn.disabled = true;
 
-
-        const provider =
-            new GoogleAuthProvider();
-
-
-        provider.setCustomParameters({
-            prompt: "select_account"
-        });
+                googleBtn.innerHTML =
+                    "Connecting to Google...";
 
 
-        const result =
-            await signInWithPopup(
-                auth,
-                provider
-            );
+                /* -----------------------------------------
+                   GOOGLE PROVIDER
+                ----------------------------------------- */
+
+                const provider =
+                    new GoogleAuthProvider();
 
 
-        const user = result.user;
+                provider.setCustomParameters({
+                    prompt: "select_account"
+                });
 
 
-        const firebaseToken =
-            await user.getIdToken();
+                /* -----------------------------------------
+                   FIREBASE GOOGLE LOGIN
+                ----------------------------------------- */
+
+                const result =
+                    await signInWithPopup(
+                        auth,
+                        provider
+                    );
 
 
-        const googleUser = {
-
-            id: user.uid,
-
-            name:
-                user.displayName ||
-                "Google User",
-
-            email:
-                user.email ||
-                "",
-
-            role: "Admin",
-
-            photoURL:
-                user.photoURL ||
-                ""
-
-        };
+                const user =
+                    result.user;
 
 
-        localStorage.setItem(
-            "finance_token",
-            firebaseToken
-        );
+                if (!user) {
+
+                    throw new Error(
+                        "Google account information was not received."
+                    );
+
+                }
 
 
-        localStorage.setItem(
-            "finance_user",
-            JSON.stringify(googleUser)
-        );
+                /* -----------------------------------------
+                   FIREBASE ID TOKEN
+                ----------------------------------------- */
+
+                const firebaseToken =
+                    await user.getIdToken(
+                        true
+                    );
 
 
-        sessionStorage.removeItem(
-            "finance_token"
-        );
+                /* -----------------------------------------
+                   SAVE GOOGLE USER
+                ----------------------------------------- */
 
-        sessionStorage.removeItem(
-            "finance_user"
-        );
+                const googleUser = {
 
+                    id:
+                        user.uid,
 
-        showMessage(
-            "Google Sign-In successful. Redirecting...",
-            "success"
-        );
+                    name:
+                        user.displayName ||
+                        "Google User",
 
+                    email:
+                        user.email ||
+                        "",
 
-        setTimeout(() => {
+                    role:
+                        "Admin",
 
-            window.location.href =
-                "index.html";
+                    photoURL:
+                        user.photoURL ||
+                        ""
 
-        }, 700);
-
-
-    } catch (error) {
-
-        console.error(
-            "Google Sign-In error:",
-            error
-        );
+                };
 
 
-        let message =
-            "Google Sign-In failed.";
+                localStorage.setItem(
+                    "finance_token",
+                    firebaseToken
+                );
 
 
-        if (error.code === "auth/unauthorized-domain") {
+                localStorage.setItem(
+                    "finance_user",
+                    JSON.stringify(
+                        googleUser
+                    )
+                );
 
-            message =
-                "This Render domain is not authorized in Firebase.";
 
-        } else if (
-            error.code === "auth/popup-closed-by-user"
-        ) {
+                /* -----------------------------------------
+                   CLEAR OLD SESSION
+                ----------------------------------------- */
 
-            message =
-                "Google Sign-In window was closed.";
+                sessionStorage.removeItem(
+                    "finance_token"
+                );
 
-        } else if (
-            error.code === "auth/popup-blocked"
-        ) {
+                sessionStorage.removeItem(
+                    "finance_user"
+                );
 
-            message =
-                "Browser blocked the Google Sign-In popup.";
 
-        } else if (
-            error.code === "auth/operation-not-allowed"
-        ) {
+                showMessage(
+                    "Google Sign-In successful. Redirecting...",
+                    "success"
+                );
 
-            message =
-                "Google Sign-In is not enabled in Firebase.";
 
-        } else if (
-            error.code === "auth/network-request-failed"
-        ) {
+                setTimeout(() => {
 
-            message =
-                "Network error. Please check your internet connection.";
+                    window.location.href =
+                        "index.html";
+
+                }, 800);
+
+
+            } catch (error) {
+
+                console.error(
+                    "Google Sign-In Error:",
+                    error
+                );
+
+
+                let message =
+                    "Google Sign-In failed.";
+
+
+                switch (error.code) {
+
+                    case "auth/unauthorized-domain":
+
+                        message =
+                            "This website domain is not authorized in Firebase.";
+
+                        break;
+
+
+                    case "auth/popup-closed-by-user":
+
+                        message =
+                            "Google Sign-In window was closed.";
+
+                        break;
+
+
+                    case "auth/popup-blocked":
+
+                        message =
+                            "Your browser blocked the Google Sign-In popup.";
+
+                        break;
+
+
+                    case "auth/operation-not-allowed":
+
+                        message =
+                            "Google Sign-In is not enabled in Firebase.";
+
+                        break;
+
+
+                    case "auth/network-request-failed":
+
+                        message =
+                            "Network error. Please check your internet connection.";
+
+                        break;
+
+
+                    case "auth/account-exists-with-different-credential":
+
+                        message =
+                            "An account already exists with this email using another sign-in method.";
+
+                        break;
+
+
+                    default:
+
+                        if (error.message) {
+                            message = error.message;
+                        }
+
+                        break;
+                }
+
+
+                showMessage(
+                    message,
+                    "error"
+                );
+
+
+            } finally {
+
+                googleBtn.disabled = false;
+
+                googleBtn.innerHTML =
+                    `
+                    <span class="google-icon">G</span>
+                    Continue with Google
+                    `;
+
+            }
 
         }
+    );
+
+}
 
 
-        showMessage(
-            message,
-            "error"
-        );
+/* =========================================================
+   MESSAGE FUNCTION
+========================================================= */
 
-
-    } finally {
-
-        googleBtn.disabled = false;
-
-        googleBtn.innerHTML =
-            `<span class="google-icon">G</span>
-             Continue with Google`;
-
-    }
-
-});
-
-
-/* =========================================
-   MESSAGE
-========================================= */
-
-function showMessage(message, type) {
+function showMessage(
+    message,
+    type = "info"
+) {
 
     if (!messageElement) {
         return;
     }
 
-    messageElement.textContent = message;
+
+    messageElement.textContent =
+        message;
+
 
     messageElement.className =
         `message ${type}`;
+
+
+    if (type === "success") {
+
+        setTimeout(() => {
+
+            if (
+                messageElement.textContent ===
+                message
+            ) {
+
+                messageElement.textContent =
+                    "";
+
+                messageElement.className =
+                    "message";
+
+            }
+
+        }, 4000);
+
+    }
 
 }
