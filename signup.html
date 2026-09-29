@@ -83,7 +83,6 @@
                 <!-- SIGNUP FORM -->
                 <form id="signupForm">
 
-                    <!-- NAME -->
                     <div class="form-group">
 
                         <label for="name">
@@ -101,7 +100,6 @@
                     </div>
 
 
-                    <!-- EMAIL -->
                     <div class="form-group">
 
                         <label for="email">
@@ -119,7 +117,6 @@
                     </div>
 
 
-                    <!-- PASSWORD -->
                     <div class="form-group">
 
                         <label for="password">
@@ -138,7 +135,6 @@
                     </div>
 
 
-                    <!-- CONFIRM PASSWORD -->
                     <div class="form-group">
 
                         <label for="confirmPassword">
@@ -157,7 +153,6 @@
                     </div>
 
 
-                    <!-- TERMS -->
                     <label class="terms">
 
                         <input
@@ -173,7 +168,6 @@
                     </label>
 
 
-                    <!-- SUBMIT -->
                     <button
                         type="submit"
                         id="signupBtn"
@@ -199,7 +193,7 @@
                 </div>
 
 
-                <!-- GOOGLE -->
+                <!-- GOOGLE SIGN IN -->
                 <button
                     type="button"
                     id="googleBtn"
@@ -228,7 +222,14 @@
     </div>
 
 
-    <script src="signup.js"></script>
+    <!-- IMPORTANT:
+         signup.js uses Firebase ES modules,
+         so it MUST be loaded as a module.
+    -->
+    <script
+        type="module"
+        src="signup.js"
+    ></script>
 
 </body>
 

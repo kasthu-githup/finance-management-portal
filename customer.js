@@ -1,125 +1,267 @@
-const API_URL = "http://localhost:5000/api/customers";
+/* =========================================
+   CUSTOMER MANAGEMENT
+   LOCAL + RENDER PRODUCTION
+========================================= */
 
-const customerForm = document.getElementById("customerForm");
-const customerTableBody = document.getElementById("customerTableBody");
-const totalCustomersElement = document.getElementById("totalCustomers");
-const messageElement = document.getElementById("message");
-const searchInput = document.getElementById("searchInput");
-const clearBtn = document.getElementById("clearBtn");
-const addCustomerBtn = document.getElementById("addCustomerBtn");
-const emptyState = document.getElementById("emptyState");
+
+/* =========================================
+   API BASE URL
+========================================= */
+
+const API_BASE =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1"
+        ? "http://localhost:5000/api"
+        : "/api";
+
+
+const API_URL =
+    `${API_BASE}/customers`;
+
+
+/* =========================================
+   ELEMENTS
+========================================= */
+
+const customerForm =
+    document.getElementById("customerForm");
+
+const customerTableBody =
+    document.getElementById("customerTableBody");
+
+const totalCustomersElement =
+    document.getElementById("totalCustomers");
+
+const messageElement =
+    document.getElementById("message");
+
+const searchInput =
+    document.getElementById("searchInput");
+
+const clearBtn =
+    document.getElementById("clearBtn");
+
+const addCustomerBtn =
+    document.getElementById("addCustomerBtn");
+
+const emptyState =
+    document.getElementById("emptyState");
+
+
+/* =========================================
+   STATE
+========================================= */
 
 let customers = [];
+
 let editingId = null;
 
 
-/* =========================
+/* =========================================
    LOAD CUSTOMERS
-========================= */
+========================================= */
 
 async function loadCustomers() {
+
     try {
-        const response = await fetch(API_URL);
+
+        const response =
+            await fetch(
+                API_URL,
+                {
+                    method: "GET",
+
+                    headers: {
+                        "Accept":
+                            "application/json"
+                    },
+
+                    cache: "no-store"
+                }
+            );
+
 
         if (!response.ok) {
-            throw new Error(`HTTP Error: ${response.status}`);
+
+            throw new Error(
+                `HTTP Error: ${response.status}`
+            );
+
         }
 
-        const data = await response.json();
+
+        const data =
+            await response.json();
+
 
         if (!data.success) {
+
             throw new Error(
-                data.message || "Failed to load customers"
+                data.message ||
+                "Failed to load customers"
             );
+
         }
 
-        customers = Array.isArray(data.customers)
-            ? data.customers
-            : [];
 
-        renderCustomers(customers);
+        customers =
+            Array.isArray(
+                data.customers
+            )
+                ? data.customers
+                : [];
 
-    } catch (error) {
-        console.error("Load customers error:", error);
+
+        renderCustomers(
+            customers
+        );
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Load customers error:",
+            error
+        );
+
+
+        customerTableBody.innerHTML = "";
+
+
+        if (emptyState) {
+
+            emptyState.style.display =
+                "block";
+
+        }
+
 
         showMessage(
             "Unable to load customer records.",
             "error"
         );
+
     }
+
 }
 
 
-/* =========================
+/* =========================================
    RENDER CUSTOMERS
-========================= */
+========================================= */
 
-function renderCustomers(customerList) {
+function renderCustomers(
+    customerList
+) {
 
     customerTableBody.innerHTML = "";
+
 
     totalCustomersElement.textContent =
         customers.length;
 
-    if (customerList.length === 0) {
-        emptyState.style.display = "block";
+
+    if (
+        customerList.length === 0
+    ) {
+
+        if (emptyState) {
+
+            emptyState.style.display =
+                "block";
+
+        }
+
         return;
     }
 
-    emptyState.style.display = "none";
 
-    customerList.forEach((customer) => {
+    if (emptyState) {
 
-        const row = document.createElement("tr");
+        emptyState.style.display =
+            "none";
 
-        row.innerHTML = `
-            <td class="customer-id">
-                ${customer.id}
-            </td>
+    }
 
-            <td class="customer-name">
-                ${escapeHtml(customer.name)}
-            </td>
 
-            <td class="customer-email">
-                ${escapeHtml(customer.email || "-")}
-            </td>
+    customerList.forEach(
+        (customer) => {
 
-            <td class="customer-phone">
-                ${escapeHtml(customer.phone || "-")}
-            </td>
+            const row =
+                document.createElement(
+                    "tr"
+                );
 
-            <td>
-                ${escapeHtml(customer.address || "-")}
-            </td>
 
-            <td>
-                <button
-                    type="button"
-                    class="action-btn edit-btn"
-                    onclick="editCustomer(${customer.id})"
-                >
-                    Edit
-                </button>
+            row.innerHTML = `
 
-                <button
-                    type="button"
-                    class="action-btn delete-btn"
-                    onclick="deleteCustomer(${customer.id})"
-                >
-                    Delete
-                </button>
-            </td>
-        `;
+                <td class="customer-id">
+                    ${escapeHtml(
+                        customer.id
+                    )}
+                </td>
 
-        customerTableBody.appendChild(row);
-    });
+                <td class="customer-name">
+                    ${escapeHtml(
+                        customer.name
+                    )}
+                </td>
+
+                <td class="customer-email">
+                    ${escapeHtml(
+                        customer.email || "-"
+                    )}
+                </td>
+
+                <td class="customer-phone">
+                    ${escapeHtml(
+                        customer.phone || "-"
+                    )}
+                </td>
+
+                <td>
+                    ${escapeHtml(
+                        customer.address || "-"
+                    )}
+                </td>
+
+                <td>
+
+                    <button
+                        type="button"
+                        class="action-btn edit-btn"
+                        onclick="editCustomer(${customer.id})"
+                    >
+                        Edit
+                    </button>
+
+                    <button
+                        type="button"
+                        class="action-btn delete-btn"
+                        onclick="deleteCustomer(${customer.id})"
+                    >
+                        Delete
+                    </button>
+
+                </td>
+
+            `;
+
+
+            customerTableBody.appendChild(
+                row
+            );
+
+        }
+    );
+
 }
 
 
-/* =========================
+/* =========================================
    ADD / UPDATE CUSTOMER
-========================= */
+========================================= */
 
 customerForm.addEventListener(
     "submit",
@@ -127,35 +269,57 @@ customerForm.addEventListener(
 
         event.preventDefault();
 
+
         const name =
-            document.getElementById("name")
-                .value.trim();
+            document
+                .getElementById("name")
+                .value
+                .trim();
+
 
         const email =
-            document.getElementById("email")
-                .value.trim();
+            document
+                .getElementById("email")
+                .value
+                .trim();
+
 
         const phone =
-            document.getElementById("phone")
-                .value.trim();
+            document
+                .getElementById("phone")
+                .value
+                .trim();
+
 
         const address =
-            document.getElementById("address")
-                .value.trim();
+            document
+                .getElementById("address")
+                .value
+                .trim();
 
+
+        /* VALIDATION */
 
         if (!name) {
+
             showMessage(
                 "Customer name is required.",
                 "error"
             );
+
+            document
+                .getElementById("name")
+                .focus();
+
             return;
         }
 
 
         try {
 
-            addCustomerBtn.disabled = true;
+            addCustomerBtn.disabled =
+                true;
+
 
             addCustomerBtn.textContent =
                 editingId
@@ -163,44 +327,68 @@ customerForm.addEventListener(
                     : "Adding...";
 
 
-            const url = editingId
-                ? `${API_URL}/${editingId}`
-                : API_URL;
-
-            const method = editingId
-                ? "PUT"
-                : "POST";
+            const url =
+                editingId
+                    ? `${API_URL}/${editingId}`
+                    : API_URL;
 
 
-            const response = await fetch(
-                url,
-                {
-                    method,
+            const method =
+                editingId
+                    ? "PUT"
+                    : "POST";
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
 
-                    body: JSON.stringify({
-                        name,
-                        email: email || null,
-                        phone: phone || null,
-                        address: address || null
-                    })
-                }
-            );
+            const response =
+                await fetch(
+                    url,
+                    {
+                        method,
+
+                        headers: {
+                            "Content-Type":
+                                "application/json",
+
+                            "Accept":
+                                "application/json"
+                        },
+
+                        body:
+                            JSON.stringify({
+
+                                name,
+
+                                email:
+                                    email ||
+                                    null,
+
+                                phone:
+                                    phone ||
+                                    null,
+
+                                address:
+                                    address ||
+                                    null
+
+                            })
+                    }
+                );
 
 
             const data =
                 await response.json();
 
 
-            if (!response.ok || !data.success) {
+            if (
+                !response.ok ||
+                !data.success
+            ) {
+
                 throw new Error(
                     data.message ||
                     "Customer operation failed"
                 );
+
             }
 
 
@@ -214,15 +402,18 @@ customerForm.addEventListener(
 
             resetForm();
 
+
             await loadCustomers();
 
+        }
 
-        } catch (error) {
+        catch (error) {
 
             console.error(
                 "Customer operation error:",
                 error
             );
+
 
             showMessage(
                 error.message ||
@@ -230,136 +421,172 @@ customerForm.addEventListener(
                 "error"
             );
 
-
-        } finally {
-
-            addCustomerBtn.disabled = false;
-
-            addCustomerBtn.innerHTML =
-                editingId
-                    ? "＋ Add Customer"
-                    : "＋ Add Customer";
         }
+
+        finally {
+
+            addCustomerBtn.disabled =
+                false;
+
+
+            addCustomerBtn.textContent =
+                "＋ Add Customer";
+
+        }
+
     }
 );
 
 
-/* =========================
+/* =========================================
    EDIT CUSTOMER
-========================= */
+========================================= */
 
-function editCustomer(id) {
+window.editCustomer =
+    function (id) {
 
-    const customer =
-        customers.find(
-            item =>
-                Number(item.id) === Number(id)
-        );
-
-
-    if (!customer) {
-        showMessage(
-            "Customer record not found.",
-            "error"
-        );
-        return;
-    }
-
-
-    editingId = customer.id;
-
-
-    document.getElementById("name").value =
-        customer.name || "";
-
-    document.getElementById("email").value =
-        customer.email || "";
-
-    document.getElementById("phone").value =
-        customer.phone || "";
-
-    document.getElementById("address").value =
-        customer.address || "";
-
-
-    addCustomerBtn.textContent =
-        "Update Customer";
-
-
-    window.scrollTo({
-        top: 0,
-        behavior: "smooth"
-    });
-}
-
-
-/* =========================
-   DELETE CUSTOMER
-========================= */
-
-async function deleteCustomer(id) {
-
-    const confirmed = confirm(
-        "Are you sure you want to delete this customer?"
-    );
-
-
-    if (!confirmed) {
-        return;
-    }
-
-
-    try {
-
-        const response =
-            await fetch(
-                `${API_URL}/${id}`,
-                {
-                    method: "DELETE"
-                }
+        const customer =
+            customers.find(
+                (item) =>
+                    Number(item.id) ===
+                    Number(id)
             );
 
 
-        const data =
-            await response.json();
+        if (!customer) {
 
-
-        if (!response.ok || !data.success) {
-            throw new Error(
-                data.message ||
-                "Delete failed"
+            showMessage(
+                "Customer record not found.",
+                "error"
             );
+
+            return;
         }
 
 
-        showMessage(
-            "Customer deleted successfully.",
-            "success"
-        );
+        editingId =
+            customer.id;
 
 
-        await loadCustomers();
+        document.getElementById(
+            "name"
+        ).value =
+            customer.name || "";
 
 
-    } catch (error) {
-
-        console.error(
-            "Delete customer error:",
-            error
-        );
-
-        showMessage(
-            error.message ||
-            "Unable to delete customer.",
-            "error"
-        );
-    }
-}
+        document.getElementById(
+            "email"
+        ).value =
+            customer.email || "";
 
 
-/* =========================
-   SEARCH
-========================= */
+        document.getElementById(
+            "phone"
+        ).value =
+            customer.phone || "";
+
+
+        document.getElementById(
+            "address"
+        ).value =
+            customer.address || "";
+
+
+        addCustomerBtn.textContent =
+            "Update Customer";
+
+
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth"
+        });
+
+    };
+
+
+/* =========================================
+   DELETE CUSTOMER
+========================================= */
+
+window.deleteCustomer =
+    async function (id) {
+
+        const confirmed =
+            confirm(
+                "Are you sure you want to delete this customer?"
+            );
+
+
+        if (!confirmed) {
+            return;
+        }
+
+
+        try {
+
+            const response =
+                await fetch(
+                    `${API_URL}/${id}`,
+                    {
+                        method: "DELETE",
+
+                        headers: {
+                            "Accept":
+                                "application/json"
+                        }
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            if (
+                !response.ok ||
+                !data.success
+            ) {
+
+                throw new Error(
+                    data.message ||
+                    "Delete failed"
+                );
+
+            }
+
+
+            showMessage(
+                "Customer deleted successfully.",
+                "success"
+            );
+
+
+            await loadCustomers();
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Delete customer error:",
+                error
+            );
+
+
+            showMessage(
+                error.message ||
+                "Unable to delete customer.",
+                "error"
+            );
+
+        }
+
+    };
+
+
+/* =========================================
+   SEARCH CUSTOMERS
+========================================= */
 
 searchInput.addEventListener(
     "input",
@@ -372,7 +599,11 @@ searchInput.addEventListener(
 
 
         if (!searchTerm) {
-            renderCustomers(customers);
+
+            renderCustomers(
+                customers
+            );
+
             return;
         }
 
@@ -386,15 +617,18 @@ searchInput.addEventListener(
                             customer.name || ""
                         ).toLowerCase();
 
+
                     const email =
                         String(
                             customer.email || ""
                         ).toLowerCase();
 
+
                     const phone =
                         String(
                             customer.phone || ""
                         ).toLowerCase();
+
 
                     const address =
                         String(
@@ -403,24 +637,38 @@ searchInput.addEventListener(
 
 
                     return (
-                        name.includes(searchTerm) ||
-                        email.includes(searchTerm) ||
-                        phone.includes(searchTerm) ||
-                        address.includes(searchTerm)
+                        name.includes(
+                            searchTerm
+                        ) ||
+
+                        email.includes(
+                            searchTerm
+                        ) ||
+
+                        phone.includes(
+                            searchTerm
+                        ) ||
+
+                        address.includes(
+                            searchTerm
+                        )
                     );
+
                 }
             );
 
 
-        renderCustomers(filteredCustomers);
+        renderCustomers(
+            filteredCustomers
+        );
 
     }
 );
 
 
-/* =========================
+/* =========================================
    CLEAR
-========================= */
+========================================= */
 
 clearBtn.addEventListener(
     "click",
@@ -428,34 +676,48 @@ clearBtn.addEventListener(
 
         resetForm();
 
-        searchInput.value = "";
 
-        renderCustomers(customers);
+        searchInput.value =
+            "";
 
-        messageElement.textContent = "";
+
+        renderCustomers(
+            customers
+        );
+
+
+        messageElement.textContent =
+            "";
+
+
+        messageElement.className =
+            "message";
 
     }
 );
 
 
-/* =========================
+/* =========================================
    RESET FORM
-========================= */
+========================================= */
 
 function resetForm() {
 
     editingId = null;
 
+
     customerForm.reset();
+
 
     addCustomerBtn.textContent =
         "＋ Add Customer";
+
 }
 
 
-/* =========================
+/* =========================================
    MESSAGE
-========================= */
+========================================= */
 
 function showMessage(
     message,
@@ -465,38 +727,63 @@ function showMessage(
     messageElement.textContent =
         message;
 
+
     messageElement.className =
         `message ${type}`;
 
 
-    setTimeout(() => {
+    setTimeout(
+        () => {
 
-        messageElement.textContent = "";
+            messageElement.textContent =
+                "";
 
-        messageElement.className =
-            "message";
 
-    }, 4000);
+            messageElement.className =
+                "message";
+
+        },
+        4000
+    );
+
 }
 
 
-/* =========================
+/* =========================================
    HTML SECURITY
-========================= */
+========================================= */
 
 function escapeHtml(value) {
 
-    return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+    return String(
+        value ?? ""
+    )
+        .replaceAll(
+            "&",
+            "&amp;"
+        )
+        .replaceAll(
+            "<",
+            "&lt;"
+        )
+        .replaceAll(
+            ">",
+            "&gt;"
+        )
+        .replaceAll(
+            '"',
+            "&quot;"
+        )
+        .replaceAll(
+            "'",
+            "&#039;"
+        );
+
 }
 
 
-/* =========================
+/* =========================================
    INITIAL LOAD
-========================= */
+========================================= */
 
 loadCustomers();

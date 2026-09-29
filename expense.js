@@ -1,151 +1,266 @@
-const API_URL = "http://localhost:5000/api/expenses";
+/* =========================================
+   EXPENSE MANAGEMENT
+   LOCAL + RENDER PRODUCTION
+========================================= */
 
-const expenseForm = document.getElementById("expenseForm");
-const expenseTableBody = document.getElementById("expenseTableBody");
-const totalExpenseElement = document.getElementById("totalExpense");
-const messageElement = document.getElementById("message");
+
+/* =========================================
+   API BASE URL
+========================================= */
+
+const API_BASE =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1"
+        ? "http://localhost:5000/api"
+        : "/api";
+
+
+const API_URL =
+    `${API_BASE}/expenses`;
+
+
+/* =========================================
+   ELEMENTS
+========================================= */
+
+const expenseForm =
+    document.getElementById("expenseForm");
+
+const expenseTableBody =
+    document.getElementById("expenseTableBody");
+
+const totalExpenseElement =
+    document.getElementById("totalExpense");
+
+const messageElement =
+    document.getElementById("message");
+
+
+/* =========================================
+   STATE
+========================================= */
 
 let expenseRecords = [];
+
 let editingId = null;
 
 
-/* =========================
+/* =========================================
    LOAD EXPENSES
-========================= */
+========================================= */
 
 async function loadExpenses() {
+
     try {
-        const response = await fetch(API_URL);
+
+        const response =
+            await fetch(API_URL, {
+                method: "GET",
+                headers: {
+                    "Accept": "application/json"
+                },
+                cache: "no-store"
+            });
+
 
         if (!response.ok) {
-            throw new Error(`HTTP Error: ${response.status}`);
+
+            throw new Error(
+                `HTTP Error: ${response.status}`
+            );
+
         }
 
-        const data = await response.json();
+
+        const data =
+            await response.json();
+
 
         if (!data.success) {
+
             throw new Error(
-                data.message || "Failed to load expenses"
+                data.message ||
+                "Failed to load expenses"
             );
+
         }
 
-        expenseRecords = Array.isArray(data.expenses)
-            ? data.expenses
-            : [];
 
-        renderExpenses(expenseRecords);
+        expenseRecords =
+            Array.isArray(data.expenses)
+                ? data.expenses
+                : [];
 
-    } catch (error) {
-        console.error("Load expenses error:", error);
+
+        renderExpenses(
+            expenseRecords
+        );
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Load expenses error:",
+            error
+        );
+
+
+        expenseTableBody.innerHTML = `
+            <tr>
+                <td
+                    colspan="7"
+                    style="text-align:center;"
+                >
+                    Unable to load expense records.
+                </td>
+            </tr>
+        `;
+
 
         showMessage(
             "Unable to load expense records.",
             "error"
         );
+
     }
+
 }
 
 
-/* =========================
+/* =========================================
    RENDER EXPENSES
-========================= */
+========================================= */
 
 function renderExpenses(records) {
 
     expenseTableBody.innerHTML = "";
 
+
     let total = 0;
+
 
     if (records.length === 0) {
 
         expenseTableBody.innerHTML = `
             <tr>
-                <td colspan="7" style="text-align:center;">
+                <td
+                    colspan="7"
+                    style="text-align:center;"
+                >
                     No expense records found.
                 </td>
             </tr>
         `;
 
-        totalExpenseElement.textContent = "₹0";
+
+        totalExpenseElement.textContent =
+            "₹0";
+
+
         return;
     }
 
 
-    records.forEach((expense) => {
+    records.forEach(
+        (expense) => {
 
-        total += Number(expense.amount || 0);
+            total +=
+                Number(
+                    expense.amount || 0
+                );
 
-        const row = document.createElement("tr");
 
-        const date = expense.expense_date
-            ? new Date(
+            const row =
+                document.createElement("tr");
+
+
+            const date =
                 expense.expense_date
-            ).toLocaleDateString("en-IN")
-            : "-";
+                    ? formatDate(
+                        expense.expense_date
+                    )
+                    : "-";
 
 
-        row.innerHTML = `
-            <td>${expense.id}</td>
+            row.innerHTML = `
 
-            <td>
-                ${escapeHtml(expense.title)}
-            </td>
+                <td>
+                    ${escapeHtml(
+                        expense.id
+                    )}
+                </td>
 
-            <td class="amount">
-                ₹${Number(
-                    expense.amount
-                ).toLocaleString("en-IN")}
-            </td>
+                <td>
+                    ${escapeHtml(
+                        expense.title
+                    )}
+                </td>
 
-            <td>
-                ${date}
-            </td>
+                <td class="amount">
+                    ₹${formatMoney(
+                        expense.amount
+                    )}
+                </td>
 
-            <td>
-                ${escapeHtml(
-                    expense.category || "-"
-                )}
-            </td>
+                <td>
+                    ${date}
+                </td>
 
-            <td>
-                ${escapeHtml(
-                    expense.description || "-"
-                )}
-            </td>
+                <td>
+                    ${escapeHtml(
+                        expense.category ||
+                        "-"
+                    )}
+                </td>
 
-            <td>
+                <td>
+                    ${escapeHtml(
+                        expense.description ||
+                        "-"
+                    )}
+                </td>
 
-                <button
-                    type="button"
-                    class="action-btn edit-btn"
-                    onclick="editExpense(${expense.id})"
-                >
-                    Edit
-                </button>
+                <td>
 
-                <button
-                    type="button"
-                    class="action-btn delete-btn"
-                    onclick="deleteExpense(${expense.id})"
-                >
-                    Delete
-                </button>
+                    <button
+                        type="button"
+                        class="action-btn edit-btn"
+                        onclick="editExpense(${expense.id})"
+                    >
+                        Edit
+                    </button>
 
-            </td>
-        `;
+                    <button
+                        type="button"
+                        class="action-btn delete-btn"
+                        onclick="deleteExpense(${expense.id})"
+                    >
+                        Delete
+                    </button>
 
-        expenseTableBody.appendChild(row);
-    });
+                </td>
+
+            `;
+
+
+            expenseTableBody.appendChild(
+                row
+            );
+
+        }
+    );
 
 
     totalExpenseElement.textContent =
-        `₹${total.toLocaleString("en-IN")}`;
+        `₹${formatMoney(total)}`;
+
 }
 
 
-/* =========================
+/* =========================================
    ADD / UPDATE EXPENSE
-========================= */
+========================================= */
 
 expenseForm.addEventListener(
     "submit",
@@ -155,102 +270,136 @@ expenseForm.addEventListener(
 
 
         const title =
-            document.getElementById(
-                "title"
-            ).value.trim();
+            document
+                .getElementById("title")
+                .value
+                .trim();
+
 
         const amount =
-            document.getElementById(
-                "amount"
-            ).value;
+            document
+                .getElementById("amount")
+                .value;
+
 
         const expense_date =
-            document.getElementById(
-                "expense_date"
-            ).value;
+            document
+                .getElementById("expense_date")
+                .value;
+
 
         const category =
-            document.getElementById(
-                "category"
-            ).value;
+            document
+                .getElementById("category")
+                .value;
+
 
         const description =
-            document.getElementById(
-                "description"
-            ).value.trim();
+            document
+                .getElementById("description")
+                .value
+                .trim();
 
+
+        /* VALIDATION */
 
         if (!title) {
+
             showMessage(
                 "Expense title is required.",
                 "error"
             );
+
             return;
         }
 
 
         if (
             amount === "" ||
+            !Number.isFinite(
+                Number(amount)
+            ) ||
             Number(amount) <= 0
         ) {
+
             showMessage(
                 "Please enter a valid amount.",
                 "error"
             );
+
             return;
         }
 
 
         try {
 
-            const url = editingId
-                ? `${API_URL}/${editingId}`
-                : API_URL;
-
-            const method = editingId
-                ? "PUT"
-                : "POST";
+            const url =
+                editingId
+                    ? `${API_URL}/${editingId}`
+                    : API_URL;
 
 
-            const response = await fetch(
-                url,
-                {
-                    method,
+            const method =
+                editingId
+                    ? "PUT"
+                    : "POST";
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
 
-                    body: JSON.stringify({
+            const response =
+                await fetch(
+                    url,
+                    {
+                        method,
 
-                        title,
+                        headers: {
+                            "Content-Type":
+                                "application/json",
 
-                        amount:
-                            Number(amount),
+                            "Accept":
+                                "application/json"
+                        },
 
-                        expense_date:
-                            expense_date || null,
+                        body:
+                            JSON.stringify({
 
-                        category:
-                            category || null,
+                                title,
 
-                        description:
-                            description || null
-                    })
-                }
-            );
+                                amount:
+                                    Number(
+                                        amount
+                                    ),
+
+                                expense_date:
+                                    expense_date ||
+                                    null,
+
+                                category:
+                                    category ||
+                                    null,
+
+                                description:
+                                    description ||
+                                    null
+
+                            })
+                    }
+                );
 
 
             const data =
                 await response.json();
 
 
-            if (!response.ok || !data.success) {
+            if (
+                !response.ok ||
+                !data.success
+            ) {
+
                 throw new Error(
                     data.message ||
                     "Expense operation failed"
                 );
+
             }
 
 
@@ -264,165 +413,205 @@ expenseForm.addEventListener(
 
             resetForm();
 
+
             await loadExpenses();
 
+        }
 
-        } catch (error) {
+        catch (error) {
 
             console.error(
                 "Expense operation error:",
                 error
             );
 
+
             showMessage(
                 error.message ||
                 "Unable to save expense.",
                 "error"
             );
+
         }
+
     }
 );
 
 
-/* =========================
+/* =========================================
    EDIT EXPENSE
-========================= */
+========================================= */
 
-function editExpense(id) {
+window.editExpense =
+    function (id) {
 
-    const expense =
-        expenseRecords.find(
-            item =>
-                Number(item.id) === Number(id)
-        );
-
-
-    if (!expense) {
-
-        showMessage(
-            "Expense record not found.",
-            "error"
-        );
-
-        return;
-    }
-
-
-    editingId = expense.id;
-
-
-    document.getElementById("title").value =
-        expense.title || "";
-
-
-    document.getElementById("amount").value =
-        expense.amount || "";
-
-
-    document.getElementById("expense_date").value =
-        expense.expense_date
-            ? expense.expense_date.substring(0, 10)
-            : "";
-
-
-    document.getElementById("category").value =
-        expense.category || "";
-
-
-    document.getElementById("description").value =
-        expense.description || "";
-
-
-    const submitButton =
-        expenseForm.querySelector(
-            "button[type='submit']"
-        );
-
-
-    if (submitButton) {
-        submitButton.textContent =
-            "Update Expense";
-    }
-
-
-    window.scrollTo({
-        top: 0,
-        behavior: "smooth"
-    });
-}
-
-
-/* =========================
-   DELETE EXPENSE
-========================= */
-
-async function deleteExpense(id) {
-
-    const confirmed = confirm(
-        "Are you sure you want to delete this expense record?"
-    );
-
-
-    if (!confirmed) {
-        return;
-    }
-
-
-    try {
-
-        const response =
-            await fetch(
-                `${API_URL}/${id}`,
-                {
-                    method: "DELETE"
-                }
+        const expense =
+            expenseRecords.find(
+                (item) =>
+                    Number(item.id) ===
+                    Number(id)
             );
 
 
-        const data =
-            await response.json();
+        if (!expense) {
 
-
-        if (!response.ok || !data.success) {
-            throw new Error(
-                data.message ||
-                "Delete failed"
+            showMessage(
+                "Expense record not found.",
+                "error"
             );
+
+            return;
         }
 
 
-        showMessage(
-            "Expense deleted successfully.",
-            "success"
-        );
+        editingId =
+            expense.id;
 
 
-        await loadExpenses();
+        document.getElementById(
+            "title"
+        ).value =
+            expense.title || "";
 
 
-    } catch (error) {
-
-        console.error(
-            "Delete expense error:",
-            error
-        );
-
-        showMessage(
-            error.message ||
-            "Unable to delete expense.",
-            "error"
-        );
-    }
-}
+        document.getElementById(
+            "amount"
+        ).value =
+            expense.amount || "";
 
 
-/* =========================
+        document.getElementById(
+            "expense_date"
+        ).value =
+            expense.expense_date
+                ? String(
+                    expense.expense_date
+                ).substring(0, 10)
+                : "";
+
+
+        document.getElementById(
+            "category"
+        ).value =
+            expense.category || "";
+
+
+        document.getElementById(
+            "description"
+        ).value =
+            expense.description || "";
+
+
+        const submitButton =
+            expenseForm.querySelector(
+                "button[type='submit']"
+            );
+
+
+        if (submitButton) {
+
+            submitButton.textContent =
+                "Update Expense";
+
+        }
+
+
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth"
+        });
+
+    };
+
+
+/* =========================================
+   DELETE EXPENSE
+========================================= */
+
+window.deleteExpense =
+    async function (id) {
+
+        const confirmed =
+            confirm(
+                "Are you sure you want to delete this expense record?"
+            );
+
+
+        if (!confirmed) {
+            return;
+        }
+
+
+        try {
+
+            const response =
+                await fetch(
+                    `${API_URL}/${id}`,
+                    {
+                        method: "DELETE",
+
+                        headers: {
+                            "Accept":
+                                "application/json"
+                        }
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            if (
+                !response.ok ||
+                !data.success
+            ) {
+
+                throw new Error(
+                    data.message ||
+                    "Delete failed"
+                );
+
+            }
+
+
+            showMessage(
+                "Expense deleted successfully.",
+                "success"
+            );
+
+
+            await loadExpenses();
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Delete expense error:",
+                error
+            );
+
+
+            showMessage(
+                error.message ||
+                "Unable to delete expense.",
+                "error"
+            );
+
+        }
+
+    };
+
+
+/* =========================================
    RESET FORM
-========================= */
+========================================= */
 
 function resetForm() {
 
     editingId = null;
+
 
     expenseForm.reset();
 
@@ -434,15 +623,18 @@ function resetForm() {
 
 
     if (submitButton) {
+
         submitButton.textContent =
             "Add Expense";
+
     }
+
 }
 
 
-/* =========================
+/* =========================================
    MESSAGE
-========================= */
+========================================= */
 
 function showMessage(
     message,
@@ -452,38 +644,110 @@ function showMessage(
     messageElement.textContent =
         message;
 
+
     messageElement.className =
         `message ${type}`;
 
 
-    setTimeout(() => {
+    setTimeout(
+        () => {
 
-        messageElement.textContent = "";
+            messageElement.textContent =
+                "";
 
-        messageElement.className =
-            "message";
+            messageElement.className =
+                "message";
 
-    }, 4000);
+        },
+        4000
+    );
+
 }
 
 
-/* =========================
+/* =========================================
+   DATE FORMAT
+========================================= */
+
+function formatDate(value) {
+
+    const date =
+        new Date(value);
+
+
+    if (
+        Number.isNaN(
+            date.getTime()
+        )
+    ) {
+
+        return String(value)
+            .substring(0, 10);
+
+    }
+
+
+    return date.toLocaleDateString(
+        "en-IN"
+    );
+
+}
+
+
+/* =========================================
+   MONEY FORMAT
+========================================= */
+
+function formatMoney(value) {
+
+    return Number(
+        value || 0
+    ).toLocaleString(
+        "en-IN",
+        {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }
+    );
+
+}
+
+
+/* =========================================
    HTML SECURITY
-========================= */
+========================================= */
 
 function escapeHtml(value) {
 
-    return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+    return String(
+        value ?? ""
+    )
+        .replaceAll(
+            "&",
+            "&amp;"
+        )
+        .replaceAll(
+            "<",
+            "&lt;"
+        )
+        .replaceAll(
+            ">",
+            "&gt;"
+        )
+        .replaceAll(
+            '"',
+            "&quot;"
+        )
+        .replaceAll(
+            "'",
+            "&#039;"
+        );
+
 }
 
 
-/* =========================
+/* =========================================
    INITIAL LOAD
-========================= */
+========================================= */
 
 loadExpenses();
