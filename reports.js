@@ -1,4 +1,8 @@
-const DASHBOARD_API = "http://localhost:5000/api/dashboard";
+const DASHBOARD_API =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1"
+        ? "http://localhost:5000/api/dashboard"
+        : "/api/dashboard";
 
 async function loadReports() {
     try {
@@ -16,61 +20,139 @@ async function loadReports() {
             );
         }
 
-        const dashboard = data.dashboard;
+        const dashboard = data.dashboard || {};
+
+        const totalIncome =
+            Number(dashboard.totalIncome || 0);
+
+        const totalExpense =
+            Number(dashboard.totalExpense || 0);
+
+        const netProfit =
+            Number(dashboard.netProfit || 0);
+
+        const totalPayments =
+            Number(dashboard.totalPayments || 0);
+
+        const totalCustomers =
+            Number(dashboard.totalCustomers || 0);
+
+        const totalInvoices =
+            Number(dashboard.totalInvoices || 0);
 
         // Main report cards
-        document.getElementById("totalIncome").textContent =
-            `₹${Number(dashboard.totalIncome).toLocaleString("en-IN")}`;
+        setText(
+            "totalIncome",
+            formatCurrency(totalIncome)
+        );
 
-        document.getElementById("totalExpense").textContent =
-            `₹${Number(dashboard.totalExpense).toLocaleString("en-IN")}`;
+        setText(
+            "totalExpense",
+            formatCurrency(totalExpense)
+        );
 
-        document.getElementById("netProfit").textContent =
-            `₹${Number(dashboard.netProfit).toLocaleString("en-IN")}`;
+        setText(
+            "netProfit",
+            formatCurrency(netProfit)
+        );
 
-        document.getElementById("totalPayments").textContent =
-            `₹${Number(dashboard.totalPayments).toLocaleString("en-IN")}`;
+        setText(
+            "totalPayments",
+            formatCurrency(totalPayments)
+        );
 
-        document.getElementById("totalCustomers").textContent =
-            dashboard.totalCustomers;
+        setText(
+            "totalCustomers",
+            totalCustomers
+        );
 
-        document.getElementById("totalInvoices").textContent =
-            dashboard.totalInvoices;
-
+        setText(
+            "totalInvoices",
+            totalInvoices
+        );
 
         // Financial Summary
-        document.getElementById("summaryIncome").textContent =
-            `₹${Number(dashboard.totalIncome).toLocaleString("en-IN")}`;
+        setText(
+            "summaryIncome",
+            formatCurrency(totalIncome)
+        );
 
-        document.getElementById("summaryExpense").textContent =
-            `₹${Number(dashboard.totalExpense).toLocaleString("en-IN")}`;
+        setText(
+            "summaryExpense",
+            formatCurrency(totalExpense)
+        );
 
-        document.getElementById("summaryProfit").textContent =
-            `₹${Number(dashboard.netProfit).toLocaleString("en-IN")}`;
-
+        setText(
+            "summaryProfit",
+            formatCurrency(netProfit)
+        );
 
         // System Summary
-        document.getElementById("summaryCustomers").textContent =
-            dashboard.totalCustomers;
+        setText(
+            "summaryCustomers",
+            totalCustomers
+        );
 
-        document.getElementById("summaryInvoices").textContent =
-            dashboard.totalInvoices;
+        setText(
+            "summaryInvoices",
+            totalInvoices
+        );
 
-        document.getElementById("summaryPayments").textContent =
-            `₹${Number(dashboard.totalPayments).toLocaleString("en-IN")}`;
+        setText(
+            "summaryPayments",
+            formatCurrency(totalPayments)
+        );
+
+        showMessage(
+            "Reports loaded successfully.",
+            "success"
+        );
 
     } catch (error) {
         console.error("Reports Error:", error);
 
-        const messageElement =
-            document.getElementById("message");
+        showMessage(
+            "Unable to load finance reports. Please check the server connection.",
+            "error"
+        );
+    }
+}
 
-        if (messageElement) {
-            messageElement.textContent =
-                "Unable to load finance reports.";
-            messageElement.className =
-                "message error";
+function setText(id, value) {
+    const element = document.getElementById(id);
+
+    if (element) {
+        element.textContent = value;
+    }
+}
+
+function formatCurrency(value) {
+    return `₹${Number(value || 0).toLocaleString(
+        "en-IN",
+        {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
         }
+    )}`;
+}
+
+function showMessage(message, type) {
+    const messageElement =
+        document.getElementById("message");
+
+    if (!messageElement) {
+        return;
+    }
+
+    messageElement.textContent = message;
+    messageElement.className =
+        `message ${type}`;
+
+    if (type === "success") {
+        setTimeout(() => {
+            messageElement.textContent = "";
+            messageElement.className = "message";
+        }, 2500);
     }
 }
 
