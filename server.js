@@ -9,14 +9,23 @@ const pool = require("./db");
 
 const app = express();
 
+/* =========================================================
+   BASIC MIDDLEWARE
+========================================================= */
+
 app.use(cors());
 app.use(express.json());
 
 /* =========================================================
    FRONTEND STATIC FILES
+   IMPORTANT:
+   Disable automatic index.html loading.
+   Root "/" will be handled by the login route below.
 ========================================================= */
 
-app.use(express.static(__dirname));
+app.use(express.static(__dirname, {
+    index: false
+}));
 
 /* =========================================================
    PAYMENT METHODS
@@ -32,10 +41,13 @@ const ALLOWED_PAYMENT_METHODS = [
 
 /* =========================================================
    HOME
+   Production website starts with LOGIN page.
 ========================================================= */
 
 app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "login.html"));
+    res.sendFile(
+        path.join(__dirname, "login.html")
+    );
 });
 
 /* =========================================================
@@ -44,6 +56,7 @@ app.get("/", (req, res) => {
 
 app.get("/api/test-db", async (req, res) => {
     try {
+
         const result = await pool.query(
             "SELECT NOW() AS current_time"
         );
@@ -55,7 +68,11 @@ app.get("/api/test-db", async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Database error:", error.message);
+
+        console.error(
+            "Database error:",
+            error.message
+        );
 
         res.status(500).json({
             success: false,
@@ -71,6 +88,7 @@ app.get("/api/test-db", async (req, res) => {
 
 app.post("/api/signup", async (req, res) => {
     try {
+
         const {
             name,
             email,
@@ -78,66 +96,89 @@ app.post("/api/signup", async (req, res) => {
         } = req.body;
 
         if (!name || !email || !password) {
+
             return res.status(400).json({
                 success: false,
-                message: "Name, email and password are required"
+                message:
+                    "Name, email and password are required"
             });
         }
 
-        const normalizedEmail = String(email)
-            .trim()
-            .toLowerCase();
+        const normalizedEmail =
+            String(email)
+                .trim()
+                .toLowerCase();
 
         if (password.length < 6) {
+
             return res.status(400).json({
                 success: false,
-                message: "Password must be at least 6 characters"
+                message:
+                    "Password must be at least 6 characters"
             });
         }
 
-        const existingUser = await pool.query(
-            "SELECT id FROM users WHERE email = $1",
-            [normalizedEmail]
-        );
+        const existingUser =
+            await pool.query(
+                "SELECT id FROM users WHERE email = $1",
+                [normalizedEmail]
+            );
 
         if (existingUser.rows.length > 0) {
+
             return res.status(409).json({
                 success: false,
-                message: "Email already registered"
+                message:
+                    "Email already registered"
             });
         }
 
-        const passwordHash = await bcrypt.hash(
-            password,
-            10
-        );
+        const passwordHash =
+            await bcrypt.hash(
+                password,
+                10
+            );
 
-        const result = await pool.query(
-            `INSERT INTO users
-                (name, email, password_hash)
-             VALUES
-                ($1, $2, $3)
-             RETURNING
-                id,
-                name,
-                email,
-                role,
-                created_at`,
-            [
-                name.trim(),
-                normalizedEmail,
-                passwordHash
-            ]
-        );
+        const result =
+            await pool.query(
+                `INSERT INTO users
+                    (
+                        name,
+                        email,
+                        password_hash
+                    )
+                 VALUES
+                    (
+                        $1,
+                        $2,
+                        $3
+                    )
+                 RETURNING
+                    id,
+                    name,
+                    email,
+                    role,
+                    created_at`,
+                [
+                    name.trim(),
+                    normalizedEmail,
+                    passwordHash
+                ]
+            );
 
         res.status(201).json({
             success: true,
-            message: "Account created successfully",
+            message:
+                "Account created successfully",
             user: result.rows[0]
         });
 
     } catch (error) {
-        console.error("Signup error:", error.message);
+
+        console.error(
+            "Signup error:",
+            error.message
+        );
 
         res.status(500).json({
             success: false,
@@ -152,63 +193,76 @@ app.post("/api/signup", async (req, res) => {
 
 app.post("/api/login", async (req, res) => {
     try {
+
         const {
             email,
             password
         } = req.body;
 
         if (!email || !password) {
+
             return res.status(400).json({
                 success: false,
-                message: "Email and password are required"
+                message:
+                    "Email and password are required"
             });
         }
 
-        const normalizedEmail = String(email)
-            .trim()
-            .toLowerCase();
+        const normalizedEmail =
+            String(email)
+                .trim()
+                .toLowerCase();
 
-        const result = await pool.query(
-            "SELECT * FROM users WHERE email = $1",
-            [normalizedEmail]
-        );
+        const result =
+            await pool.query(
+                "SELECT * FROM users WHERE email = $1",
+                [normalizedEmail]
+            );
 
         if (result.rows.length === 0) {
+
             return res.status(401).json({
                 success: false,
-                message: "Invalid email or password"
+                message:
+                    "Invalid email or password"
             });
         }
 
-        const user = result.rows[0];
+        const user =
+            result.rows[0];
 
-        const passwordMatch = await bcrypt.compare(
-            password,
-            user.password_hash
-        );
+        const passwordMatch =
+            await bcrypt.compare(
+                password,
+                user.password_hash
+            );
 
         if (!passwordMatch) {
+
             return res.status(401).json({
                 success: false,
-                message: "Invalid email or password"
+                message:
+                    "Invalid email or password"
             });
         }
 
-        const token = jwt.sign(
-            {
-                id: user.id,
-                email: user.email,
-                role: user.role
-            },
-            process.env.JWT_SECRET,
-            {
-                expiresIn: "1d"
-            }
-        );
+        const token =
+            jwt.sign(
+                {
+                    id: user.id,
+                    email: user.email,
+                    role: user.role
+                },
+                process.env.JWT_SECRET,
+                {
+                    expiresIn: "1d"
+                }
+            );
 
         res.json({
             success: true,
-            message: "Login successful",
+            message:
+                "Login successful",
             token,
             user: {
                 id: user.id,
@@ -219,7 +273,11 @@ app.post("/api/login", async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Login error:", error.message);
+
+        console.error(
+            "Login error:",
+            error.message
+        );
 
         res.status(500).json({
             success: false,
@@ -232,14 +290,17 @@ app.post("/api/login", async (req, res) => {
    INCOME
 ========================================================= */
 
-// GET ALL INCOME
+/* GET ALL INCOME */
+
 app.get("/api/income", async (req, res) => {
     try {
-        const result = await pool.query(`
-            SELECT *
-            FROM income
-            ORDER BY income_date DESC, id DESC
-        `);
+
+        const result =
+            await pool.query(`
+                SELECT *
+                FROM income
+                ORDER BY income_date DESC, id DESC
+            `);
 
         res.json({
             success: true,
@@ -247,18 +308,26 @@ app.get("/api/income", async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Get income error:", error.message);
+
+        console.error(
+            "Get income error:",
+            error.message
+        );
 
         res.status(500).json({
             success: false,
-            message: "Failed to fetch income"
+            message:
+                "Failed to fetch income"
         });
     }
 });
 
-// ADD INCOME
+
+/* ADD INCOME */
+
 app.post("/api/income", async (req, res) => {
     try {
+
         const {
             title,
             amount,
@@ -266,63 +335,77 @@ app.post("/api/income", async (req, res) => {
             description
         } = req.body;
 
-        const incomeAmount = Number(amount);
+        const incomeAmount =
+            Number(amount);
 
         if (
             !title ||
             !Number.isFinite(incomeAmount) ||
             incomeAmount <= 0
         ) {
+
             return res.status(400).json({
                 success: false,
-                message: "Title and a valid positive amount are required"
+                message:
+                    "Title and a valid positive amount are required"
             });
         }
 
-        const result = await pool.query(
-            `INSERT INTO income
-                (
-                    title,
-                    amount,
-                    income_date,
-                    description
-                )
-             VALUES
-                (
-                    $1,
-                    $2,
-                    COALESCE($3, CURRENT_DATE),
-                    $4
-                )
-             RETURNING *`,
-            [
-                title.trim(),
-                incomeAmount,
-                income_date || null,
-                description || null
-            ]
-        );
+        const result =
+            await pool.query(
+                `INSERT INTO income
+                    (
+                        title,
+                        amount,
+                        income_date,
+                        description
+                    )
+                 VALUES
+                    (
+                        $1,
+                        $2,
+                        COALESCE($3, CURRENT_DATE),
+                        $4
+                    )
+                 RETURNING *`,
+                [
+                    title.trim(),
+                    incomeAmount,
+                    income_date || null,
+                    description || null
+                ]
+            );
 
         res.status(201).json({
             success: true,
-            message: "Income added successfully",
+            message:
+                "Income added successfully",
             income: result.rows[0]
         });
 
     } catch (error) {
-        console.error("Add income error:", error.message);
+
+        console.error(
+            "Add income error:",
+            error.message
+        );
 
         res.status(500).json({
             success: false,
-            message: "Failed to add income"
+            message:
+                "Failed to add income"
         });
     }
 });
 
-// UPDATE INCOME
+
+/* UPDATE INCOME */
+
 app.put("/api/income/:id", async (req, res) => {
     try {
-        const { id } = req.params;
+
+        const { id } =
+            req.params;
 
         const {
             title,
@@ -331,90 +414,119 @@ app.put("/api/income/:id", async (req, res) => {
             description
         } = req.body;
 
-        const incomeAmount = Number(amount);
+        const incomeAmount =
+            Number(amount);
 
         if (
             !title ||
             !Number.isFinite(incomeAmount) ||
             incomeAmount <= 0
         ) {
+
             return res.status(400).json({
                 success: false,
-                message: "Title and a valid positive amount are required"
+                message:
+                    "Title and a valid positive amount are required"
             });
         }
 
-        const result = await pool.query(
-            `UPDATE income
-             SET
-                title = $1,
-                amount = $2,
-                income_date = COALESCE($3, income_date),
-                description = $4
-             WHERE id = $5
-             RETURNING *`,
-            [
-                title.trim(),
-                incomeAmount,
-                income_date || null,
-                description || null,
-                id
-            ]
-        );
+        const result =
+            await pool.query(
+                `UPDATE income
+                 SET
+                    title = $1,
+                    amount = $2,
+                    income_date =
+                        COALESCE(
+                            $3,
+                            income_date
+                        ),
+                    description = $4
+                 WHERE id = $5
+                 RETURNING *`,
+                [
+                    title.trim(),
+                    incomeAmount,
+                    income_date || null,
+                    description || null,
+                    id
+                ]
+            );
 
         if (result.rows.length === 0) {
+
             return res.status(404).json({
                 success: false,
-                message: "Income record not found"
+                message:
+                    "Income record not found"
             });
         }
 
         res.json({
             success: true,
-            message: "Income updated successfully",
+            message:
+                "Income updated successfully",
             income: result.rows[0]
         });
 
     } catch (error) {
-        console.error("Update income error:", error.message);
+
+        console.error(
+            "Update income error:",
+            error.message
+        );
 
         res.status(500).json({
             success: false,
-            message: "Failed to update income"
+            message:
+                "Failed to update income"
         });
     }
 });
 
-// DELETE INCOME
+
+/* DELETE INCOME */
+
 app.delete("/api/income/:id", async (req, res) => {
     try {
-        const { id } = req.params;
 
-        const result = await pool.query(
-            `DELETE FROM income
-             WHERE id = $1
-             RETURNING id`,
-            [id]
-        );
+        const { id } =
+            req.params;
+
+        const result =
+            await pool.query(
+                `DELETE FROM income
+                 WHERE id = $1
+                 RETURNING id`,
+                [id]
+            );
 
         if (result.rows.length === 0) {
+
             return res.status(404).json({
                 success: false,
-                message: "Income record not found"
+                message:
+                    "Income record not found"
             });
         }
 
         res.json({
             success: true,
-            message: "Income deleted successfully"
+            message:
+                "Income deleted successfully"
         });
 
     } catch (error) {
-        console.error("Delete income error:", error.message);
+
+        console.error(
+            "Delete income error:",
+            error.message
+        );
 
         res.status(500).json({
             success: false,
-            message: "Failed to delete income"
+            message:
+                "Failed to delete income"
         });
     }
 });
@@ -423,14 +535,17 @@ app.delete("/api/income/:id", async (req, res) => {
    EXPENSES
 ========================================================= */
 
-// GET ALL EXPENSES
+/* GET ALL EXPENSES */
+
 app.get("/api/expenses", async (req, res) => {
     try {
-        const result = await pool.query(`
-            SELECT *
-            FROM expenses
-            ORDER BY expense_date DESC, id DESC
-        `);
+
+        const result =
+            await pool.query(`
+                SELECT *
+                FROM expenses
+                ORDER BY expense_date DESC, id DESC
+            `);
 
         res.json({
             success: true,
@@ -438,18 +553,26 @@ app.get("/api/expenses", async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Get expenses error:", error.message);
+
+        console.error(
+            "Get expenses error:",
+            error.message
+        );
 
         res.status(500).json({
             success: false,
-            message: "Failed to fetch expenses"
+            message:
+                "Failed to fetch expenses"
         });
     }
 });
 
-// ADD EXPENSE
+
+/* ADD EXPENSE */
+
 app.post("/api/expenses", async (req, res) => {
     try {
+
         const {
             title,
             amount,
@@ -458,66 +581,80 @@ app.post("/api/expenses", async (req, res) => {
             description
         } = req.body;
 
-        const expenseAmount = Number(amount);
+        const expenseAmount =
+            Number(amount);
 
         if (
             !title ||
             !Number.isFinite(expenseAmount) ||
             expenseAmount <= 0
         ) {
+
             return res.status(400).json({
                 success: false,
-                message: "Title and a valid positive amount are required"
+                message:
+                    "Title and a valid positive amount are required"
             });
         }
 
-        const result = await pool.query(
-            `INSERT INTO expenses
-                (
-                    title,
-                    amount,
-                    expense_date,
-                    category,
-                    description
-                )
-             VALUES
-                (
-                    $1,
-                    $2,
-                    COALESCE($3, CURRENT_DATE),
-                    $4,
-                    $5
-                )
-             RETURNING *`,
-            [
-                title.trim(),
-                expenseAmount,
-                expense_date || null,
-                category || null,
-                description || null
-            ]
-        );
+        const result =
+            await pool.query(
+                `INSERT INTO expenses
+                    (
+                        title,
+                        amount,
+                        expense_date,
+                        category,
+                        description
+                    )
+                 VALUES
+                    (
+                        $1,
+                        $2,
+                        COALESCE($3, CURRENT_DATE),
+                        $4,
+                        $5
+                    )
+                 RETURNING *`,
+                [
+                    title.trim(),
+                    expenseAmount,
+                    expense_date || null,
+                    category || null,
+                    description || null
+                ]
+            );
 
         res.status(201).json({
             success: true,
-            message: "Expense added successfully",
+            message:
+                "Expense added successfully",
             expense: result.rows[0]
         });
 
     } catch (error) {
-        console.error("Add expense error:", error.message);
+
+        console.error(
+            "Add expense error:",
+            error.message
+        );
 
         res.status(500).json({
             success: false,
-            message: "Failed to add expense"
+            message:
+                "Failed to add expense"
         });
     }
 });
 
-// UPDATE EXPENSE
+
+/* UPDATE EXPENSE */
+
 app.put("/api/expenses/:id", async (req, res) => {
     try {
-        const { id } = req.params;
+
+        const { id } =
+            req.params;
 
         const {
             title,
@@ -527,92 +664,121 @@ app.put("/api/expenses/:id", async (req, res) => {
             description
         } = req.body;
 
-        const expenseAmount = Number(amount);
+        const expenseAmount =
+            Number(amount);
 
         if (
             !title ||
             !Number.isFinite(expenseAmount) ||
             expenseAmount <= 0
         ) {
+
             return res.status(400).json({
                 success: false,
-                message: "Title and a valid positive amount are required"
+                message:
+                    "Title and a valid positive amount are required"
             });
         }
 
-        const result = await pool.query(
-            `UPDATE expenses
-             SET
-                title = $1,
-                amount = $2,
-                expense_date = COALESCE($3, expense_date),
-                category = $4,
-                description = $5
-             WHERE id = $6
-             RETURNING *`,
-            [
-                title.trim(),
-                expenseAmount,
-                expense_date || null,
-                category || null,
-                description || null,
-                id
-            ]
-        );
+        const result =
+            await pool.query(
+                `UPDATE expenses
+                 SET
+                    title = $1,
+                    amount = $2,
+                    expense_date =
+                        COALESCE(
+                            $3,
+                            expense_date
+                        ),
+                    category = $4,
+                    description = $5
+                 WHERE id = $6
+                 RETURNING *`,
+                [
+                    title.trim(),
+                    expenseAmount,
+                    expense_date || null,
+                    category || null,
+                    description || null,
+                    id
+                ]
+            );
 
         if (result.rows.length === 0) {
+
             return res.status(404).json({
                 success: false,
-                message: "Expense record not found"
+                message:
+                    "Expense record not found"
             });
         }
 
         res.json({
             success: true,
-            message: "Expense updated successfully",
+            message:
+                "Expense updated successfully",
             expense: result.rows[0]
         });
 
     } catch (error) {
-        console.error("Update expense error:", error.message);
+
+        console.error(
+            "Update expense error:",
+            error.message
+        );
 
         res.status(500).json({
             success: false,
-            message: "Failed to update expense"
+            message:
+                "Failed to update expense"
         });
     }
 });
 
-// DELETE EXPENSE
+
+/* DELETE EXPENSE */
+
 app.delete("/api/expenses/:id", async (req, res) => {
     try {
-        const { id } = req.params;
 
-        const result = await pool.query(
-            `DELETE FROM expenses
-             WHERE id = $1
-             RETURNING id`,
-            [id]
-        );
+        const { id } =
+            req.params;
+
+        const result =
+            await pool.query(
+                `DELETE FROM expenses
+                 WHERE id = $1
+                 RETURNING id`,
+                [id]
+            );
 
         if (result.rows.length === 0) {
+
             return res.status(404).json({
                 success: false,
-                message: "Expense record not found"
+                message:
+                    "Expense record not found"
             });
         }
 
         res.json({
             success: true,
-            message: "Expense deleted successfully"
+            message:
+                "Expense deleted successfully"
         });
 
     } catch (error) {
-        console.error("Delete expense error:", error.message);
+
+        console.error(
+            "Delete expense error:",
+            error.message
+        );
 
         res.status(500).json({
             success: false,
-            message: "Failed to delete expense"
+            message:
+                "Failed to delete expense"
         });
     }
 });
@@ -621,14 +787,17 @@ app.delete("/api/expenses/:id", async (req, res) => {
    CUSTOMERS
 ========================================================= */
 
-// GET CUSTOMERS
+/* GET CUSTOMERS */
+
 app.get("/api/customers", async (req, res) => {
     try {
-        const result = await pool.query(`
-            SELECT *
-            FROM customers
-            ORDER BY id DESC
-        `);
+
+        const result =
+            await pool.query(`
+                SELECT *
+                FROM customers
+                ORDER BY id DESC
+            `);
 
         res.json({
             success: true,
@@ -636,18 +805,26 @@ app.get("/api/customers", async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Get customers error:", error.message);
+
+        console.error(
+            "Get customers error:",
+            error.message
+        );
 
         res.status(500).json({
             success: false,
-            message: "Failed to fetch customers"
+            message:
+                "Failed to fetch customers"
         });
     }
 });
 
-// ADD CUSTOMER
+
+/* ADD CUSTOMER */
+
 app.post("/api/customers", async (req, res) => {
     try {
+
         const {
             name,
             email,
@@ -656,56 +833,69 @@ app.post("/api/customers", async (req, res) => {
         } = req.body;
 
         if (!name) {
+
             return res.status(400).json({
                 success: false,
-                message: "Customer name is required"
+                message:
+                    "Customer name is required"
             });
         }
 
-        const result = await pool.query(
-            `INSERT INTO customers
-                (
-                    name,
-                    email,
-                    phone,
-                    address
-                )
-             VALUES
-                (
-                    $1,
-                    $2,
-                    $3,
-                    $4
-                )
-             RETURNING *`,
-            [
-                name.trim(),
-                email || null,
-                phone || null,
-                address || null
-            ]
-        );
+        const result =
+            await pool.query(
+                `INSERT INTO customers
+                    (
+                        name,
+                        email,
+                        phone,
+                        address
+                    )
+                 VALUES
+                    (
+                        $1,
+                        $2,
+                        $3,
+                        $4
+                    )
+                 RETURNING *`,
+                [
+                    name.trim(),
+                    email || null,
+                    phone || null,
+                    address || null
+                ]
+            );
 
         res.status(201).json({
             success: true,
-            message: "Customer added successfully",
+            message:
+                "Customer added successfully",
             customer: result.rows[0]
         });
 
     } catch (error) {
-        console.error("Add customer error:", error.message);
+
+        console.error(
+            "Add customer error:",
+            error.message
+        );
 
         res.status(500).json({
             success: false,
-            message: "Failed to add customer"
+            message:
+                "Failed to add customer"
         });
     }
 });
 
-// UPDATE CUSTOMER
+
+/* UPDATE CUSTOMER */
+
 app.put("/api/customers/:id", async (req, res) => {
     try {
-        const { id } = req.params;
+
+        const { id } =
+            req.params;
 
         const {
             name,
@@ -715,69 +905,88 @@ app.put("/api/customers/:id", async (req, res) => {
         } = req.body;
 
         if (!name) {
+
             return res.status(400).json({
                 success: false,
-                message: "Customer name is required"
+                message:
+                    "Customer name is required"
             });
         }
 
-        const result = await pool.query(
-            `UPDATE customers
-             SET
-                name = $1,
-                email = $2,
-                phone = $3,
-                address = $4
-             WHERE id = $5
-             RETURNING *`,
-            [
-                name.trim(),
-                email || null,
-                phone || null,
-                address || null,
-                id
-            ]
-        );
+        const result =
+            await pool.query(
+                `UPDATE customers
+                 SET
+                    name = $1,
+                    email = $2,
+                    phone = $3,
+                    address = $4
+                 WHERE id = $5
+                 RETURNING *`,
+                [
+                    name.trim(),
+                    email || null,
+                    phone || null,
+                    address || null,
+                    id
+                ]
+            );
 
         if (result.rows.length === 0) {
+
             return res.status(404).json({
                 success: false,
-                message: "Customer not found"
+                message:
+                    "Customer not found"
             });
         }
 
         res.json({
             success: true,
-            message: "Customer updated successfully",
+            message:
+                "Customer updated successfully",
             customer: result.rows[0]
         });
 
     } catch (error) {
-        console.error("Update customer error:", error.message);
+
+        console.error(
+            "Update customer error:",
+            error.message
+        );
 
         res.status(500).json({
             success: false,
-            message: "Failed to update customer"
+            message:
+                "Failed to update customer"
         });
     }
 });
 
-// DELETE CUSTOMER
+
+/* DELETE CUSTOMER */
+
 app.delete("/api/customers/:id", async (req, res) => {
     try {
-        const { id } = req.params;
 
-        const linkedInvoices = await pool.query(
-            `SELECT COUNT(*) AS count
-             FROM invoices
-             WHERE customer_id = $1`,
-            [id]
-        );
+        const { id } =
+            req.params;
+
+        const linkedInvoices =
+            await pool.query(
+                `SELECT COUNT(*) AS count
+                 FROM invoices
+                 WHERE customer_id = $1`,
+                [id]
+            );
 
         const invoiceCount =
-            Number(linkedInvoices.rows[0].count);
+            Number(
+                linkedInvoices.rows[0].count
+            );
 
         if (invoiceCount > 0) {
+
             return res.status(409).json({
                 success: false,
                 message:
@@ -785,31 +994,40 @@ app.delete("/api/customers/:id", async (req, res) => {
             });
         }
 
-        const result = await pool.query(
-            `DELETE FROM customers
-             WHERE id = $1
-             RETURNING id`,
-            [id]
-        );
+        const result =
+            await pool.query(
+                `DELETE FROM customers
+                 WHERE id = $1
+                 RETURNING id`,
+                [id]
+            );
 
         if (result.rows.length === 0) {
+
             return res.status(404).json({
                 success: false,
-                message: "Customer not found"
+                message:
+                    "Customer not found"
             });
         }
 
         res.json({
             success: true,
-            message: "Customer deleted successfully"
+            message:
+                "Customer deleted successfully"
         });
 
     } catch (error) {
-        console.error("Delete customer error:", error.message);
+
+        console.error(
+            "Delete customer error:",
+            error.message
+        );
 
         res.status(500).json({
             success: false,
-            message: "Failed to delete customer"
+            message:
+                "Failed to delete customer"
         });
     }
 });
@@ -818,38 +1036,57 @@ app.delete("/api/customers/:id", async (req, res) => {
    INVOICE + PAYMENT HELPERS
 ========================================================= */
 
-async function getInvoicePaymentTotal(client, invoiceId) {
-    const result = await client.query(
-        `SELECT
-            COALESCE(SUM(amount), 0) AS total_paid
-         FROM payments
-         WHERE invoice_id = $1`,
-        [invoiceId]
-    );
+async function getInvoicePaymentTotal(
+    client,
+    invoiceId
+) {
 
-    return Number(result.rows[0].total_paid || 0);
+    const result =
+        await client.query(
+            `SELECT
+                COALESCE(
+                    SUM(amount),
+                    0
+                ) AS total_paid
+             FROM payments
+             WHERE invoice_id = $1`,
+            [invoiceId]
+        );
+
+    return Number(
+        result.rows[0].total_paid || 0
+    );
 }
 
-async function syncInvoiceStatus(client, invoiceId) {
-    const invoiceResult = await client.query(
-        `SELECT
-            id,
-            amount,
-            status
-         FROM invoices
-         WHERE id = $1
-         FOR UPDATE`,
-        [invoiceId]
-    );
+
+async function syncInvoiceStatus(
+    client,
+    invoiceId
+) {
+
+    const invoiceResult =
+        await client.query(
+            `SELECT
+                id,
+                amount,
+                status
+             FROM invoices
+             WHERE id = $1
+             FOR UPDATE`,
+            [invoiceId]
+        );
 
     if (invoiceResult.rows.length === 0) {
         return null;
     }
 
-    const invoice = invoiceResult.rows[0];
+    const invoice =
+        invoiceResult.rows[0];
 
     const invoiceAmount =
-        Number(invoice.amount || 0);
+        Number(
+            invoice.amount || 0
+        );
 
     const totalPaid =
         await getInvoicePaymentTotal(
@@ -859,13 +1096,26 @@ async function syncInvoiceStatus(client, invoiceId) {
 
     let status;
 
-    if (invoice.status === "cancelled") {
+    if (
+        invoice.status === "cancelled"
+    ) {
+
         status = "cancelled";
-    } else if (totalPaid <= 0) {
+
+    } else if (
+        totalPaid <= 0
+    ) {
+
         status = "pending";
-    } else if (totalPaid >= invoiceAmount) {
+
+    } else if (
+        totalPaid >= invoiceAmount
+    ) {
+
         status = "paid";
+
     } else {
+
         status = "partial";
     }
 
@@ -881,10 +1131,11 @@ async function syncInvoiceStatus(client, invoiceId) {
 
     return {
         totalPaid,
-        balanceDue: Math.max(
-            invoiceAmount - totalPaid,
-            0
-        ),
+        balanceDue:
+            Math.max(
+                invoiceAmount - totalPaid,
+                0
+            ),
         status
     };
 }
@@ -893,42 +1144,45 @@ async function syncInvoiceStatus(client, invoiceId) {
    INVOICES
 ========================================================= */
 
-// GET INVOICES
+/* GET INVOICES */
+
 app.get("/api/invoices", async (req, res) => {
     try {
-        const result = await pool.query(`
-            SELECT
-                i.*,
-                c.name AS customer_name,
 
-                COALESCE(
-                    SUM(p.amount),
-                    0
-                ) AS total_paid,
+        const result =
+            await pool.query(`
+                SELECT
+                    i.*,
+                    c.name AS customer_name,
 
-                GREATEST(
-                    i.amount -
                     COALESCE(
                         SUM(p.amount),
                         0
-                    ),
-                    0
-                ) AS balance_due
+                    ) AS total_paid,
 
-            FROM invoices i
+                    GREATEST(
+                        i.amount -
+                        COALESCE(
+                            SUM(p.amount),
+                            0
+                        ),
+                        0
+                    ) AS balance_due
 
-            LEFT JOIN customers c
-                ON i.customer_id = c.id
+                FROM invoices i
 
-            LEFT JOIN payments p
-                ON i.id = p.invoice_id
+                LEFT JOIN customers c
+                    ON i.customer_id = c.id
 
-            GROUP BY
-                i.id,
-                c.name
+                LEFT JOIN payments p
+                    ON i.id = p.invoice_id
 
-            ORDER BY i.id DESC
-        `);
+                GROUP BY
+                    i.id,
+                    c.name
+
+                ORDER BY i.id DESC
+            `);
 
         res.json({
             success: true,
@@ -936,18 +1190,26 @@ app.get("/api/invoices", async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Get invoices error:", error.message);
+
+        console.error(
+            "Get invoices error:",
+            error.message
+        );
 
         res.status(500).json({
             success: false,
-            message: "Failed to fetch invoices"
+            message:
+                "Failed to fetch invoices"
         });
     }
 });
 
-// ADD INVOICE
+
+/* ADD INVOICE */
+
 app.post("/api/invoices", async (req, res) => {
     try {
+
         const {
             customer_id,
             invoice_number,
@@ -956,13 +1218,15 @@ app.post("/api/invoices", async (req, res) => {
             status
         } = req.body;
 
-        const invoiceAmount = Number(amount);
+        const invoiceAmount =
+            Number(amount);
 
         if (
             !invoice_number ||
             !Number.isFinite(invoiceAmount) ||
             invoiceAmount <= 0
         ) {
+
             return res.status(400).json({
                 success: false,
                 message:
@@ -970,17 +1234,20 @@ app.post("/api/invoices", async (req, res) => {
             });
         }
 
-        const duplicate = await pool.query(
-            `SELECT id
-             FROM invoices
-             WHERE invoice_number = $1`,
-            [invoice_number.trim()]
-        );
+        const duplicate =
+            await pool.query(
+                `SELECT id
+                 FROM invoices
+                 WHERE invoice_number = $1`,
+                [invoice_number.trim()]
+            );
 
         if (duplicate.rows.length > 0) {
+
             return res.status(409).json({
                 success: false,
-                message: "Invoice number already exists"
+                message:
+                    "Invoice number already exists"
             });
         }
 
@@ -989,17 +1256,21 @@ app.post("/api/invoices", async (req, res) => {
             customer_id !== undefined &&
             customer_id !== ""
         ) {
-            const customer = await pool.query(
-                `SELECT id
-                 FROM customers
-                 WHERE id = $1`,
-                [customer_id]
-            );
+
+            const customer =
+                await pool.query(
+                    `SELECT id
+                     FROM customers
+                     WHERE id = $1`,
+                    [customer_id]
+                );
 
             if (customer.rows.length === 0) {
+
                 return res.status(400).json({
                     success: false,
-                    message: "Customer not found"
+                    message:
+                        "Customer not found"
                 });
             }
         }
@@ -1009,55 +1280,71 @@ app.post("/api/invoices", async (req, res) => {
                 ? "cancelled"
                 : "pending";
 
-        const result = await pool.query(
-            `INSERT INTO invoices
-                (
-                    customer_id,
-                    invoice_number,
-                    amount,
-                    invoice_date,
-                    status
-                )
-             VALUES
-                (
-                    $1,
-                    $2,
-                    $3,
-                    COALESCE($4, CURRENT_DATE),
-                    $5
-                )
-             RETURNING *`,
-            [
-                customer_id || null,
-                invoice_number.trim(),
-                invoiceAmount,
-                invoice_date || null,
-                finalStatus
-            ]
-        );
+        const result =
+            await pool.query(
+                `INSERT INTO invoices
+                    (
+                        customer_id,
+                        invoice_number,
+                        amount,
+                        invoice_date,
+                        status
+                    )
+                 VALUES
+                    (
+                        $1,
+                        $2,
+                        $3,
+                        COALESCE(
+                            $4,
+                            CURRENT_DATE
+                        ),
+                        $5
+                    )
+                 RETURNING *`,
+                [
+                    customer_id || null,
+                    invoice_number.trim(),
+                    invoiceAmount,
+                    invoice_date || null,
+                    finalStatus
+                ]
+            );
 
         res.status(201).json({
             success: true,
-            message: "Invoice created successfully",
+            message:
+                "Invoice created successfully",
             invoice: result.rows[0]
         });
 
     } catch (error) {
-        console.error("Add invoice error:", error.message);
+
+        console.error(
+            "Add invoice error:",
+            error.message
+        );
 
         res.status(500).json({
             success: false,
-            message: "Failed to create invoice"
+            message:
+                "Failed to create invoice"
         });
     }
 });
 
-// UPDATE INVOICE
+
+/* UPDATE INVOICE */
+
 app.put("/api/invoices/:id", async (req, res) => {
-    const client = await pool.connect();
+
+    const client =
+        await pool.connect();
 
     try {
-        const { id } = req.params;
+
+        const { id } =
+            req.params;
 
         const {
             customer_id,
@@ -1067,13 +1354,15 @@ app.put("/api/invoices/:id", async (req, res) => {
             status
         } = req.body;
 
-        const invoiceAmount = Number(amount);
+        const invoiceAmount =
+            Number(amount);
 
         if (
             !invoice_number ||
             !Number.isFinite(invoiceAmount) ||
             invoiceAmount <= 0
         ) {
+
             return res.status(400).json({
                 success: false,
                 message:
@@ -1083,40 +1372,50 @@ app.put("/api/invoices/:id", async (req, res) => {
 
         await client.query("BEGIN");
 
-        const existing = await client.query(
-            `SELECT *
-             FROM invoices
-             WHERE id = $1
-             FOR UPDATE`,
-            [id]
-        );
+        const existing =
+            await client.query(
+                `SELECT *
+                 FROM invoices
+                 WHERE id = $1
+                 FOR UPDATE`,
+                [id]
+            );
 
         if (existing.rows.length === 0) {
-            await client.query("ROLLBACK");
+
+            await client.query(
+                "ROLLBACK"
+            );
 
             return res.status(404).json({
                 success: false,
-                message: "Invoice not found"
+                message:
+                    "Invoice not found"
             });
         }
 
-        const duplicate = await client.query(
-            `SELECT id
-             FROM invoices
-             WHERE invoice_number = $1
-             AND id <> $2`,
-            [
-                invoice_number.trim(),
-                id
-            ]
-        );
+        const duplicate =
+            await client.query(
+                `SELECT id
+                 FROM invoices
+                 WHERE invoice_number = $1
+                 AND id <> $2`,
+                [
+                    invoice_number.trim(),
+                    id
+                ]
+            );
 
         if (duplicate.rows.length > 0) {
-            await client.query("ROLLBACK");
+
+            await client.query(
+                "ROLLBACK"
+            );
 
             return res.status(409).json({
                 success: false,
-                message: "Invoice number already exists"
+                message:
+                    "Invoice number already exists"
             });
         }
 
@@ -1125,19 +1424,25 @@ app.put("/api/invoices/:id", async (req, res) => {
             customer_id !== undefined &&
             customer_id !== ""
         ) {
-            const customer = await client.query(
-                `SELECT id
-                 FROM customers
-                 WHERE id = $1`,
-                [customer_id]
-            );
+
+            const customer =
+                await client.query(
+                    `SELECT id
+                     FROM customers
+                     WHERE id = $1`,
+                    [customer_id]
+                );
 
             if (customer.rows.length === 0) {
-                await client.query("ROLLBACK");
+
+                await client.query(
+                    "ROLLBACK"
+                );
 
                 return res.status(400).json({
                     success: false,
-                    message: "Customer not found"
+                    message:
+                        "Customer not found"
                 });
             }
         }
@@ -1148,8 +1453,13 @@ app.put("/api/invoices/:id", async (req, res) => {
                 id
             );
 
-        if (invoiceAmount < totalPaid) {
-            await client.query("ROLLBACK");
+        if (
+            invoiceAmount < totalPaid
+        ) {
+
+            await client.query(
+                "ROLLBACK"
+            );
 
             return res.status(400).json({
                 success: false,
@@ -1162,7 +1472,10 @@ app.put("/api/invoices/:id", async (req, res) => {
             status === "cancelled" &&
             totalPaid > 0
         ) {
-            await client.query("ROLLBACK");
+
+            await client.query(
+                "ROLLBACK"
+            );
 
             return res.status(400).json({
                 success: false,
@@ -1173,46 +1486,70 @@ app.put("/api/invoices/:id", async (req, res) => {
 
         let finalStatus;
 
-        if (status === "cancelled") {
+        if (
+            status === "cancelled"
+        ) {
+
             finalStatus = "cancelled";
-        } else if (totalPaid <= 0) {
+
+        } else if (
+            totalPaid <= 0
+        ) {
+
             finalStatus = "pending";
-        } else if (totalPaid >= invoiceAmount) {
+
+        } else if (
+            totalPaid >= invoiceAmount
+        ) {
+
             finalStatus = "paid";
+
         } else {
+
             finalStatus = "partial";
         }
 
-        const result = await client.query(
-            `UPDATE invoices
-             SET
-                customer_id = $1,
-                invoice_number = $2,
-                amount = $3,
-                invoice_date = COALESCE($4, invoice_date),
-                status = $5
-             WHERE id = $6
-             RETURNING *`,
-            [
-                customer_id || null,
-                invoice_number.trim(),
-                invoiceAmount,
-                invoice_date || null,
-                finalStatus,
-                id
-            ]
-        );
+        const result =
+            await client.query(
+                `UPDATE invoices
+                 SET
+                    customer_id = $1,
+                    invoice_number = $2,
+                    amount = $3,
+                    invoice_date =
+                        COALESCE(
+                            $4,
+                            invoice_date
+                        ),
+                    status = $5
+                 WHERE id = $6
+                 RETURNING *`,
+                [
+                    customer_id || null,
+                    invoice_number.trim(),
+                    invoiceAmount,
+                    invoice_date || null,
+                    finalStatus,
+                    id
+                ]
+            );
 
-        await client.query("COMMIT");
+        await client.query(
+            "COMMIT"
+        );
 
         res.json({
             success: true,
-            message: "Invoice updated successfully",
+            message:
+                "Invoice updated successfully",
             invoice: result.rows[0]
         });
 
     } catch (error) {
-        await client.query("ROLLBACK");
+
+        await client.query(
+            "ROLLBACK"
+        );
 
         console.error(
             "Update invoice error:",
@@ -1221,52 +1558,73 @@ app.put("/api/invoices/:id", async (req, res) => {
 
         res.status(500).json({
             success: false,
-            message: "Failed to update invoice"
+            message:
+                "Failed to update invoice"
         });
 
     } finally {
+
         client.release();
     }
 });
 
-// DELETE INVOICE
+
+/* DELETE INVOICE */
+
 app.delete("/api/invoices/:id", async (req, res) => {
-    const client = await pool.connect();
+
+    const client =
+        await pool.connect();
 
     try {
-        const { id } = req.params;
 
-        await client.query("BEGIN");
+        const { id } =
+            req.params;
 
-        const invoice = await client.query(
-            `SELECT id
-             FROM invoices
-             WHERE id = $1
-             FOR UPDATE`,
-            [id]
+        await client.query(
+            "BEGIN"
         );
 
+        const invoice =
+            await client.query(
+                `SELECT id
+                 FROM invoices
+                 WHERE id = $1
+                 FOR UPDATE`,
+                [id]
+            );
+
         if (invoice.rows.length === 0) {
-            await client.query("ROLLBACK");
+
+            await client.query(
+                "ROLLBACK"
+            );
 
             return res.status(404).json({
                 success: false,
-                message: "Invoice not found"
+                message:
+                    "Invoice not found"
             });
         }
 
-        const payments = await client.query(
-            `SELECT COUNT(*) AS count
-             FROM payments
-             WHERE invoice_id = $1`,
-            [id]
-        );
+        const payments =
+            await client.query(
+                `SELECT COUNT(*) AS count
+                 FROM payments
+                 WHERE invoice_id = $1`,
+                [id]
+            );
 
         const paymentCount =
-            Number(payments.rows[0].count);
+            Number(
+                payments.rows[0].count
+            );
 
         if (paymentCount > 0) {
-            await client.query("ROLLBACK");
+
+            await client.query(
+                "ROLLBACK"
+            );
 
             return res.status(409).json({
                 success: false,
@@ -1281,15 +1639,21 @@ app.delete("/api/invoices/:id", async (req, res) => {
             [id]
         );
 
-        await client.query("COMMIT");
+        await client.query(
+            "COMMIT"
+        );
 
         res.json({
             success: true,
-            message: "Invoice deleted successfully"
+            message:
+                "Invoice deleted successfully"
         });
 
     } catch (error) {
-        await client.query("ROLLBACK");
+
+        await client.query(
+            "ROLLBACK"
+        );
 
         console.error(
             "Delete invoice error:",
@@ -1298,10 +1662,12 @@ app.delete("/api/invoices/:id", async (req, res) => {
 
         res.status(500).json({
             success: false,
-            message: "Failed to delete invoice"
+            message:
+                "Failed to delete invoice"
         });
 
     } finally {
+
         client.release();
     }
 });
@@ -1310,68 +1676,83 @@ app.delete("/api/invoices/:id", async (req, res) => {
    PAYMENTS
 ========================================================= */
 
-// GET PAYMENTS
+/* GET PAYMENTS */
+
 app.get("/api/payments", async (req, res) => {
     try {
-        const result = await pool.query(`
-            SELECT
-                p.id,
-                p.invoice_id,
-                p.amount,
-                p.payment_date,
-                p.payment_method,
 
-                i.invoice_number,
-                i.amount AS invoice_amount,
+        const result =
+            await pool.query(`
+                SELECT
+                    p.id,
+                    p.invoice_id,
+                    p.amount,
+                    p.payment_date,
+                    p.payment_method,
 
-                c.name AS customer_name,
+                    i.invoice_number,
+                    i.amount AS invoice_amount,
 
-                COALESCE(
-                    (
-                        SELECT SUM(p2.amount)
-                        FROM payments p2
-                        WHERE p2.invoice_id = p.invoice_id
-                    ),
-                    0
-                ) AS total_paid
+                    c.name AS customer_name,
 
-            FROM payments p
+                    COALESCE(
+                        (
+                            SELECT SUM(p2.amount)
+                            FROM payments p2
+                            WHERE p2.invoice_id =
+                                p.invoice_id
+                        ),
+                        0
+                    ) AS total_paid
 
-            LEFT JOIN invoices i
-                ON p.invoice_id = i.id
+                FROM payments p
 
-            LEFT JOIN customers c
-                ON i.customer_id = c.id
+                LEFT JOIN invoices i
+                    ON p.invoice_id = i.id
 
-            ORDER BY p.id DESC
-        `);
+                LEFT JOIN customers c
+                    ON i.customer_id = c.id
 
-        const payments = result.rows.map(payment => {
-            const invoiceAmount =
-                Number(payment.invoice_amount || 0);
+                ORDER BY p.id DESC
+            `);
 
-            const totalPaid =
-                Number(payment.total_paid || 0);
+        const payments =
+            result.rows.map(
+                payment => {
 
-            const balanceDue =
-                Math.max(
-                    invoiceAmount - totalPaid,
-                    0
-                );
+                    const invoiceAmount =
+                        Number(
+                            payment.invoice_amount ||
+                            0
+                        );
 
-            return {
-                ...payment,
+                    const totalPaid =
+                        Number(
+                            payment.total_paid ||
+                            0
+                        );
 
-                invoice_amount:
-                    invoiceAmount,
+                    const balanceDue =
+                        Math.max(
+                            invoiceAmount -
+                            totalPaid,
+                            0
+                        );
 
-                total_paid:
-                    totalPaid,
+                    return {
+                        ...payment,
 
-                balance_due:
-                    balanceDue
-            };
-        });
+                        invoice_amount:
+                            invoiceAmount,
+
+                        total_paid:
+                            totalPaid,
+
+                        balance_due:
+                            balanceDue
+                    };
+                }
+            );
 
         res.json({
             success: true,
@@ -1379,6 +1760,7 @@ app.get("/api/payments", async (req, res) => {
         });
 
     } catch (error) {
+
         console.error(
             "Get payments error:",
             error.message
@@ -1386,16 +1768,22 @@ app.get("/api/payments", async (req, res) => {
 
         res.status(500).json({
             success: false,
-            message: "Failed to fetch payments"
+            message:
+                "Failed to fetch payments"
         });
     }
 });
 
-// ADD PAYMENT
+
+/* ADD PAYMENT */
+
 app.post("/api/payments", async (req, res) => {
-    const client = await pool.connect();
+
+    const client =
+        await pool.connect();
 
     try {
+
         const {
             invoice_id,
             amount,
@@ -1414,6 +1802,7 @@ app.post("/api/payments", async (req, res) => {
             !Number.isFinite(paymentAmount) ||
             paymentAmount <= 0
         ) {
+
             return res.status(400).json({
                 success: false,
                 message:
@@ -1426,13 +1815,17 @@ app.post("/api/payments", async (req, res) => {
                 payment_method
             )
         ) {
+
             return res.status(400).json({
                 success: false,
-                message: "Invalid payment method"
+                message:
+                    "Invalid payment method"
             });
         }
 
-        await client.query("BEGIN");
+        await client.query(
+            "BEGIN"
+        );
 
         const invoiceResult =
             await client.query(
@@ -1446,12 +1839,18 @@ app.post("/api/payments", async (req, res) => {
                 [invoiceId]
             );
 
-        if (invoiceResult.rows.length === 0) {
-            await client.query("ROLLBACK");
+        if (
+            invoiceResult.rows.length === 0
+        ) {
+
+            await client.query(
+                "ROLLBACK"
+            );
 
             return res.status(404).json({
                 success: false,
-                message: "Invoice not found"
+                message:
+                    "Invoice not found"
             });
         }
 
@@ -1459,9 +1858,13 @@ app.post("/api/payments", async (req, res) => {
             invoiceResult.rows[0];
 
         if (
-            invoice.status === "cancelled"
+            invoice.status ===
+            "cancelled"
         ) {
-            await client.query("ROLLBACK");
+
+            await client.query(
+                "ROLLBACK"
+            );
 
             return res.status(400).json({
                 success: false,
@@ -1484,7 +1887,10 @@ app.post("/api/payments", async (req, res) => {
             paymentAmount >
             availableBalance + 0.00001
         ) {
-            await client.query("ROLLBACK");
+
+            await client.query(
+                "ROLLBACK"
+            );
 
             return res.status(400).json({
                 success: false,
@@ -1509,7 +1915,10 @@ app.post("/api/payments", async (req, res) => {
                     (
                         $1,
                         $2,
-                        COALESCE($3, CURRENT_DATE),
+                        COALESCE(
+                            $3,
+                            CURRENT_DATE
+                        ),
                         $4
                     )
                  RETURNING *`,
@@ -1526,16 +1935,22 @@ app.post("/api/payments", async (req, res) => {
             invoiceId
         );
 
-        await client.query("COMMIT");
+        await client.query(
+            "COMMIT"
+        );
 
         res.status(201).json({
             success: true,
-            message: "Payment added successfully",
+            message:
+                "Payment added successfully",
             payment: result.rows[0]
         });
 
     } catch (error) {
-        await client.query("ROLLBACK");
+
+        await client.query(
+            "ROLLBACK"
+        );
 
         console.error(
             "Add payment error:",
@@ -1544,20 +1959,28 @@ app.post("/api/payments", async (req, res) => {
 
         res.status(500).json({
             success: false,
-            message: "Failed to add payment"
+            message:
+                "Failed to add payment"
         });
 
     } finally {
+
         client.release();
     }
 });
 
-// UPDATE PAYMENT
+
+/* UPDATE PAYMENT */
+
 app.put("/api/payments/:id", async (req, res) => {
-    const client = await pool.connect();
+
+    const client =
+        await pool.connect();
 
     try {
-        const { id } = req.params;
+
+        const { id } =
+            req.params;
 
         const {
             invoice_id,
@@ -1577,6 +2000,7 @@ app.put("/api/payments/:id", async (req, res) => {
             !Number.isFinite(paymentAmount) ||
             paymentAmount <= 0
         ) {
+
             return res.status(400).json({
                 success: false,
                 message:
@@ -1589,13 +2013,17 @@ app.put("/api/payments/:id", async (req, res) => {
                 payment_method
             )
         ) {
+
             return res.status(400).json({
                 success: false,
-                message: "Invalid payment method"
+                message:
+                    "Invalid payment method"
             });
         }
 
-        await client.query("BEGIN");
+        await client.query(
+            "BEGIN"
+        );
 
         const existing =
             await client.query(
@@ -1606,12 +2034,18 @@ app.put("/api/payments/:id", async (req, res) => {
                 [id]
             );
 
-        if (existing.rows.length === 0) {
-            await client.query("ROLLBACK");
+        if (
+            existing.rows.length === 0
+        ) {
+
+            await client.query(
+                "ROLLBACK"
+            );
 
             return res.status(404).json({
                 success: false,
-                message: "Payment not found"
+                message:
+                    "Payment not found"
             });
         }
 
@@ -1619,16 +2053,24 @@ app.put("/api/payments/:id", async (req, res) => {
             existing.rows[0];
 
         const oldInvoiceId =
-            Number(oldPayment.invoice_id);
+            Number(
+                oldPayment.invoice_id
+            );
 
         const invoiceIds = [
             ...new Set([
                 oldInvoiceId,
                 newInvoiceId
             ])
-        ].sort((a, b) => a - b);
+        ].sort(
+            (a, b) => a - b
+        );
 
-        for (const invoiceId of invoiceIds) {
+        for (
+            const invoiceId
+            of invoiceIds
+        ) {
+
             const invoiceCheck =
                 await client.query(
                     `SELECT
@@ -1644,7 +2086,10 @@ app.put("/api/payments/:id", async (req, res) => {
             if (
                 invoiceCheck.rows.length === 0
             ) {
-                await client.query("ROLLBACK");
+
+                await client.query(
+                    "ROLLBACK"
+                );
 
                 return res.status(404).json({
                     success: false,
@@ -1669,9 +2114,13 @@ app.put("/api/payments/:id", async (req, res) => {
             newInvoiceResult.rows[0];
 
         if (
-            newInvoice.status === "cancelled"
+            newInvoice.status ===
+            "cancelled"
         ) {
-            await client.query("ROLLBACK");
+
+            await client.query(
+                "ROLLBACK"
+            );
 
             return res.status(400).json({
                 success: false,
@@ -1683,8 +2132,10 @@ app.put("/api/payments/:id", async (req, res) => {
         let availableBalance;
 
         if (
-            oldInvoiceId === newInvoiceId
+            oldInvoiceId ===
+            newInvoiceId
         ) {
+
             const currentTotal =
                 await getInvoicePaymentTotal(
                     client,
@@ -1693,13 +2144,18 @@ app.put("/api/payments/:id", async (req, res) => {
 
             const totalWithoutOldPayment =
                 currentTotal -
-                Number(oldPayment.amount);
+                Number(
+                    oldPayment.amount
+                );
 
             availableBalance =
-                Number(newInvoice.amount) -
+                Number(
+                    newInvoice.amount
+                ) -
                 totalWithoutOldPayment;
 
         } else {
+
             const currentNewTotal =
                 await getInvoicePaymentTotal(
                     client,
@@ -1707,7 +2163,9 @@ app.put("/api/payments/:id", async (req, res) => {
                 );
 
             availableBalance =
-                Number(newInvoice.amount) -
+                Number(
+                    newInvoice.amount
+                ) -
                 currentNewTotal;
         }
 
@@ -1715,7 +2173,10 @@ app.put("/api/payments/:id", async (req, res) => {
             paymentAmount >
             availableBalance + 0.00001
         ) {
-            await client.query("ROLLBACK");
+
+            await client.query(
+                "ROLLBACK"
+            );
 
             return res.status(400).json({
                 success: false,
@@ -1759,22 +2220,29 @@ app.put("/api/payments/:id", async (req, res) => {
             oldInvoiceId !==
             newInvoiceId
         ) {
+
             await syncInvoiceStatus(
                 client,
                 oldInvoiceId
             );
         }
 
-        await client.query("COMMIT");
+        await client.query(
+            "COMMIT"
+        );
 
         res.json({
             success: true,
-            message: "Payment updated successfully",
+            message:
+                "Payment updated successfully",
             payment: result.rows[0]
         });
 
     } catch (error) {
-        await client.query("ROLLBACK");
+
+        await client.query(
+            "ROLLBACK"
+        );
 
         console.error(
             "Update payment error:",
@@ -1783,22 +2251,32 @@ app.put("/api/payments/:id", async (req, res) => {
 
         res.status(500).json({
             success: false,
-            message: "Failed to update payment"
+            message:
+                "Failed to update payment"
         });
 
     } finally {
+
         client.release();
     }
 });
 
-// DELETE PAYMENT
+
+/* DELETE PAYMENT */
+
 app.delete("/api/payments/:id", async (req, res) => {
-    const client = await pool.connect();
+
+    const client =
+        await pool.connect();
 
     try {
-        const { id } = req.params;
 
-        await client.query("BEGIN");
+        const { id } =
+            req.params;
+
+        await client.query(
+            "BEGIN"
+        );
 
         const existing =
             await client.query(
@@ -1811,12 +2289,18 @@ app.delete("/api/payments/:id", async (req, res) => {
                 [id]
             );
 
-        if (existing.rows.length === 0) {
-            await client.query("ROLLBACK");
+        if (
+            existing.rows.length === 0
+        ) {
+
+            await client.query(
+                "ROLLBACK"
+            );
 
             return res.status(404).json({
                 success: false,
-                message: "Payment not found"
+                message:
+                    "Payment not found"
             });
         }
 
@@ -1836,15 +2320,21 @@ app.delete("/api/payments/:id", async (req, res) => {
             invoiceId
         );
 
-        await client.query("COMMIT");
+        await client.query(
+            "COMMIT"
+        );
 
         res.json({
             success: true,
-            message: "Payment deleted successfully"
+            message:
+                "Payment deleted successfully"
         });
 
     } catch (error) {
-        await client.query("ROLLBACK");
+
+        await client.query(
+            "ROLLBACK"
+        );
 
         console.error(
             "Delete payment error:",
@@ -1853,10 +2343,12 @@ app.delete("/api/payments/:id", async (req, res) => {
 
         res.status(500).json({
             success: false,
-            message: "Failed to delete payment"
+            message:
+                "Failed to delete payment"
         });
 
     } finally {
+
         client.release();
     }
 });
@@ -1867,19 +2359,24 @@ app.delete("/api/payments/:id", async (req, res) => {
 
 app.get("/api/dashboard", async (req, res) => {
     try {
+
         const incomeResult =
             await pool.query(
                 `SELECT
-                    COALESCE(SUM(amount), 0)
-                    AS total_income
+                    COALESCE(
+                        SUM(amount),
+                        0
+                    ) AS total_income
                  FROM income`
             );
 
         const expenseResult =
             await pool.query(
                 `SELECT
-                    COALESCE(SUM(amount), 0)
-                    AS total_expense
+                    COALESCE(
+                        SUM(amount),
+                        0
+                    ) AS total_expense
                  FROM expenses`
             );
 
@@ -1900,19 +2397,23 @@ app.get("/api/dashboard", async (req, res) => {
         const paymentResult =
             await pool.query(
                 `SELECT
-                    COALESCE(SUM(amount), 0)
-                    AS total_payments
+                    COALESCE(
+                        SUM(amount),
+                        0
+                    ) AS total_payments
                  FROM payments`
             );
 
         const totalIncome =
             Number(
-                incomeResult.rows[0].total_income
+                incomeResult.rows[0]
+                    .total_income
             );
 
         const totalExpense =
             Number(
-                expenseResult.rows[0].total_expense
+                expenseResult.rows[0]
+                    .total_expense
             );
 
         const netProfit =
@@ -1921,21 +2422,25 @@ app.get("/api/dashboard", async (req, res) => {
 
         const totalCustomers =
             Number(
-                customerResult.rows[0].total_customers
+                customerResult.rows[0]
+                    .total_customers
             );
 
         const totalInvoices =
             Number(
-                invoiceResult.rows[0].total_invoices
+                invoiceResult.rows[0]
+                    .total_invoices
             );
 
         const totalPayments =
             Number(
-                paymentResult.rows[0].total_payments
+                paymentResult.rows[0]
+                    .total_payments
             );
 
         res.json({
             success: true,
+
             dashboard: {
                 totalIncome,
                 totalExpense,
@@ -1947,6 +2452,7 @@ app.get("/api/dashboard", async (req, res) => {
         });
 
     } catch (error) {
+
         console.error(
             "Dashboard error:",
             error.message
@@ -1954,7 +2460,8 @@ app.get("/api/dashboard", async (req, res) => {
 
         res.status(500).json({
             success: false,
-            message: "Failed to load dashboard"
+            message:
+                "Failed to load dashboard"
         });
     }
 });
@@ -1964,6 +2471,7 @@ app.get("/api/dashboard", async (req, res) => {
 ========================================================= */
 
 app.use("/api", (req, res) => {
+
     res.status(404).json({
         success: false,
         message:
@@ -1975,21 +2483,25 @@ app.use("/api", (req, res) => {
    GLOBAL ERROR HANDLER
 ========================================================= */
 
-app.use((error, req, res, next) => {
-    console.error(
-        "Unhandled server error:",
-        error
-    );
+app.use(
+    (error, req, res, next) => {
 
-    if (res.headersSent) {
-        return next(error);
+        console.error(
+            "Unhandled server error:",
+            error
+        );
+
+        if (res.headersSent) {
+            return next(error);
+        }
+
+        res.status(500).json({
+            success: false,
+            message:
+                "Internal server error"
+        });
     }
-
-    res.status(500).json({
-        success: false,
-        message: "Internal server error"
-    });
-});
+);
 
 /* =========================================================
    START SERVER
@@ -2003,18 +2515,22 @@ const server =
         PORT,
         "0.0.0.0",
         () => {
+
             console.log(
-                `Server running on port ${PORT}`
+                `Finance Management Portal running on port ${PORT}`
             );
+
         }
     );
 
 server.on(
     "error",
     (error) => {
+
         console.error(
             "Server error:",
             error
         );
+
     }
 );
