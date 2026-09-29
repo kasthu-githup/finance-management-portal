@@ -1,8 +1,8 @@
-
 const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const path = require("path");
 require("dotenv").config();
 
 const pool = require("./db");
@@ -11,6 +11,16 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+/* =========================================================
+   FRONTEND STATIC FILES
+========================================================= */
+
+app.use(express.static(__dirname));
+
+/* =========================================================
+   PAYMENT METHODS
+========================================================= */
 
 const ALLOWED_PAYMENT_METHODS = [
     "UPI",
@@ -25,11 +35,8 @@ const ALLOWED_PAYMENT_METHODS = [
 ========================================================= */
 
 app.get("/", (req, res) => {
-    res.json({
-        message: "Finance Management Portal API is running successfully"
-    });
+    res.sendFile(path.join(__dirname, "login.html"));
 });
-
 
 /* =========================================================
    DATABASE TEST
@@ -57,7 +64,6 @@ app.get("/api/test-db", async (req, res) => {
         });
     }
 });
-
 
 /* =========================================================
    SIGNUP
@@ -139,7 +145,6 @@ app.post("/api/signup", async (req, res) => {
         });
     }
 });
-
 
 /* =========================================================
    LOGIN
@@ -223,7 +228,6 @@ app.post("/api/login", async (req, res) => {
     }
 });
 
-
 /* =========================================================
    INCOME
 ========================================================= */
@@ -251,7 +255,6 @@ app.get("/api/income", async (req, res) => {
         });
     }
 });
-
 
 // ADD INCOME
 app.post("/api/income", async (req, res) => {
@@ -315,7 +318,6 @@ app.post("/api/income", async (req, res) => {
         });
     }
 });
-
 
 // UPDATE INCOME
 app.put("/api/income/:id", async (req, res) => {
@@ -383,7 +385,6 @@ app.put("/api/income/:id", async (req, res) => {
     }
 });
 
-
 // DELETE INCOME
 app.delete("/api/income/:id", async (req, res) => {
     try {
@@ -418,7 +419,6 @@ app.delete("/api/income/:id", async (req, res) => {
     }
 });
 
-
 /* =========================================================
    EXPENSES
 ========================================================= */
@@ -446,7 +446,6 @@ app.get("/api/expenses", async (req, res) => {
         });
     }
 });
-
 
 // ADD EXPENSE
 app.post("/api/expenses", async (req, res) => {
@@ -514,7 +513,6 @@ app.post("/api/expenses", async (req, res) => {
         });
     }
 });
-
 
 // UPDATE EXPENSE
 app.put("/api/expenses/:id", async (req, res) => {
@@ -585,7 +583,6 @@ app.put("/api/expenses/:id", async (req, res) => {
     }
 });
 
-
 // DELETE EXPENSE
 app.delete("/api/expenses/:id", async (req, res) => {
     try {
@@ -620,7 +617,6 @@ app.delete("/api/expenses/:id", async (req, res) => {
     }
 });
 
-
 /* =========================================================
    CUSTOMERS
 ========================================================= */
@@ -648,7 +644,6 @@ app.get("/api/customers", async (req, res) => {
         });
     }
 });
-
 
 // ADD CUSTOMER
 app.post("/api/customers", async (req, res) => {
@@ -706,7 +701,6 @@ app.post("/api/customers", async (req, res) => {
         });
     }
 });
-
 
 // UPDATE CUSTOMER
 app.put("/api/customers/:id", async (req, res) => {
@@ -768,7 +762,6 @@ app.put("/api/customers/:id", async (req, res) => {
     }
 });
 
-
 // DELETE CUSTOMER
 app.delete("/api/customers/:id", async (req, res) => {
     try {
@@ -821,7 +814,6 @@ app.delete("/api/customers/:id", async (req, res) => {
     }
 });
 
-
 /* =========================================================
    INVOICE + PAYMENT HELPERS
 ========================================================= */
@@ -838,9 +830,7 @@ async function getInvoicePaymentTotal(client, invoiceId) {
     return Number(result.rows[0].total_paid || 0);
 }
 
-
 async function syncInvoiceStatus(client, invoiceId) {
-
     const invoiceResult = await client.query(
         `SELECT
             id,
@@ -899,7 +889,6 @@ async function syncInvoiceStatus(client, invoiceId) {
     };
 }
 
-
 /* =========================================================
    INVOICES
 ========================================================= */
@@ -955,7 +944,6 @@ app.get("/api/invoices", async (req, res) => {
         });
     }
 });
-
 
 // ADD INVOICE
 app.post("/api/invoices", async (req, res) => {
@@ -1064,10 +1052,8 @@ app.post("/api/invoices", async (req, res) => {
     }
 });
 
-
 // UPDATE INVOICE
 app.put("/api/invoices/:id", async (req, res) => {
-
     const client = await pool.connect();
 
     try {
@@ -1228,7 +1214,10 @@ app.put("/api/invoices/:id", async (req, res) => {
     } catch (error) {
         await client.query("ROLLBACK");
 
-        console.error("Update invoice error:", error.message);
+        console.error(
+            "Update invoice error:",
+            error.message
+        );
 
         res.status(500).json({
             success: false,
@@ -1240,10 +1229,8 @@ app.put("/api/invoices/:id", async (req, res) => {
     }
 });
 
-
 // DELETE INVOICE
 app.delete("/api/invoices/:id", async (req, res) => {
-
     const client = await pool.connect();
 
     try {
@@ -1304,7 +1291,10 @@ app.delete("/api/invoices/:id", async (req, res) => {
     } catch (error) {
         await client.query("ROLLBACK");
 
-        console.error("Delete invoice error:", error.message);
+        console.error(
+            "Delete invoice error:",
+            error.message
+        );
 
         res.status(500).json({
             success: false,
@@ -1316,7 +1306,6 @@ app.delete("/api/invoices/:id", async (req, res) => {
     }
 });
 
-
 /* =========================================================
    PAYMENTS
 ========================================================= */
@@ -1324,7 +1313,6 @@ app.delete("/api/invoices/:id", async (req, res) => {
 // GET PAYMENTS
 app.get("/api/payments", async (req, res) => {
     try {
-
         const result = await pool.query(`
             SELECT
                 p.id,
@@ -1358,9 +1346,7 @@ app.get("/api/payments", async (req, res) => {
             ORDER BY p.id DESC
         `);
 
-
         const payments = result.rows.map(payment => {
-
             const invoiceAmount =
                 Number(payment.invoice_amount || 0);
 
@@ -1387,15 +1373,12 @@ app.get("/api/payments", async (req, res) => {
             };
         });
 
-
         res.json({
             success: true,
             payments
         });
 
-
     } catch (error) {
-
         console.error(
             "Get payments error:",
             error.message
@@ -1408,14 +1391,11 @@ app.get("/api/payments", async (req, res) => {
     }
 });
 
-
 // ADD PAYMENT
 app.post("/api/payments", async (req, res) => {
-
     const client = await pool.connect();
 
     try {
-
         const {
             invoice_id,
             amount,
@@ -1423,13 +1403,11 @@ app.post("/api/payments", async (req, res) => {
             payment_method
         } = req.body;
 
-
         const invoiceId =
             Number(invoice_id);
 
         const paymentAmount =
             Number(amount);
-
 
         if (
             !Number.isInteger(invoiceId) ||
@@ -1443,7 +1421,6 @@ app.post("/api/payments", async (req, res) => {
             });
         }
 
-
         if (
             !ALLOWED_PAYMENT_METHODS.includes(
                 payment_method
@@ -1455,9 +1432,7 @@ app.post("/api/payments", async (req, res) => {
             });
         }
 
-
         await client.query("BEGIN");
-
 
         const invoiceResult =
             await client.query(
@@ -1471,9 +1446,7 @@ app.post("/api/payments", async (req, res) => {
                 [invoiceId]
             );
 
-
         if (invoiceResult.rows.length === 0) {
-
             await client.query("ROLLBACK");
 
             return res.status(404).json({
@@ -1482,15 +1455,12 @@ app.post("/api/payments", async (req, res) => {
             });
         }
 
-
         const invoice =
             invoiceResult.rows[0];
-
 
         if (
             invoice.status === "cancelled"
         ) {
-
             await client.query("ROLLBACK");
 
             return res.status(400).json({
@@ -1500,24 +1470,20 @@ app.post("/api/payments", async (req, res) => {
             });
         }
 
-
         const currentPaid =
             await getInvoicePaymentTotal(
                 client,
                 invoiceId
             );
 
-
         const availableBalance =
             Number(invoice.amount) -
             currentPaid;
-
 
         if (
             paymentAmount >
             availableBalance + 0.00001
         ) {
-
             await client.query("ROLLBACK");
 
             return res.status(400).json({
@@ -1529,7 +1495,6 @@ app.post("/api/payments", async (req, res) => {
                     ).toLocaleString("en-IN")}`
             });
         }
-
 
         const result =
             await client.query(
@@ -1556,15 +1521,12 @@ app.post("/api/payments", async (req, res) => {
                 ]
             );
 
-
         await syncInvoiceStatus(
             client,
             invoiceId
         );
 
-
         await client.query("COMMIT");
-
 
         res.status(201).json({
             success: true,
@@ -1572,9 +1534,7 @@ app.post("/api/payments", async (req, res) => {
             payment: result.rows[0]
         });
 
-
     } catch (error) {
-
         await client.query("ROLLBACK");
 
         console.error(
@@ -1592,14 +1552,11 @@ app.post("/api/payments", async (req, res) => {
     }
 });
 
-
 // UPDATE PAYMENT
 app.put("/api/payments/:id", async (req, res) => {
-
     const client = await pool.connect();
 
     try {
-
         const { id } = req.params;
 
         const {
@@ -1609,13 +1566,11 @@ app.put("/api/payments/:id", async (req, res) => {
             payment_method
         } = req.body;
 
-
         const newInvoiceId =
             Number(invoice_id);
 
         const paymentAmount =
             Number(amount);
-
 
         if (
             !Number.isInteger(newInvoiceId) ||
@@ -1629,7 +1584,6 @@ app.put("/api/payments/:id", async (req, res) => {
             });
         }
 
-
         if (
             !ALLOWED_PAYMENT_METHODS.includes(
                 payment_method
@@ -1641,9 +1595,7 @@ app.put("/api/payments/:id", async (req, res) => {
             });
         }
 
-
         await client.query("BEGIN");
-
 
         const existing =
             await client.query(
@@ -1654,9 +1606,7 @@ app.put("/api/payments/:id", async (req, res) => {
                 [id]
             );
 
-
         if (existing.rows.length === 0) {
-
             await client.query("ROLLBACK");
 
             return res.status(404).json({
@@ -1665,14 +1615,11 @@ app.put("/api/payments/:id", async (req, res) => {
             });
         }
 
-
         const oldPayment =
             existing.rows[0];
 
-
         const oldInvoiceId =
             Number(oldPayment.invoice_id);
-
 
         const invoiceIds = [
             ...new Set([
@@ -1681,9 +1628,7 @@ app.put("/api/payments/:id", async (req, res) => {
             ])
         ].sort((a, b) => a - b);
 
-
         for (const invoiceId of invoiceIds) {
-
             const invoiceCheck =
                 await client.query(
                     `SELECT
@@ -1696,11 +1641,9 @@ app.put("/api/payments/:id", async (req, res) => {
                     [invoiceId]
                 );
 
-
             if (
                 invoiceCheck.rows.length === 0
             ) {
-
                 await client.query("ROLLBACK");
 
                 return res.status(404).json({
@@ -1710,7 +1653,6 @@ app.put("/api/payments/:id", async (req, res) => {
                 });
             }
         }
-
 
         const newInvoiceResult =
             await client.query(
@@ -1723,15 +1665,12 @@ app.put("/api/payments/:id", async (req, res) => {
                 [newInvoiceId]
             );
 
-
         const newInvoice =
             newInvoiceResult.rows[0];
-
 
         if (
             newInvoice.status === "cancelled"
         ) {
-
             await client.query("ROLLBACK");
 
             return res.status(400).json({
@@ -1741,50 +1680,41 @@ app.put("/api/payments/:id", async (req, res) => {
             });
         }
 
-
         let availableBalance;
-
 
         if (
             oldInvoiceId === newInvoiceId
         ) {
-
             const currentTotal =
                 await getInvoicePaymentTotal(
                     client,
                     oldInvoiceId
                 );
 
-
             const totalWithoutOldPayment =
                 currentTotal -
                 Number(oldPayment.amount);
-
 
             availableBalance =
                 Number(newInvoice.amount) -
                 totalWithoutOldPayment;
 
         } else {
-
             const currentNewTotal =
                 await getInvoicePaymentTotal(
                     client,
                     newInvoiceId
                 );
 
-
             availableBalance =
                 Number(newInvoice.amount) -
                 currentNewTotal;
         }
 
-
         if (
             paymentAmount >
             availableBalance + 0.00001
         ) {
-
             await client.query("ROLLBACK");
 
             return res.status(400).json({
@@ -1796,7 +1726,6 @@ app.put("/api/payments/:id", async (req, res) => {
                     ).toLocaleString("en-IN")}`
             });
         }
-
 
         const result =
             await client.query(
@@ -1821,12 +1750,10 @@ app.put("/api/payments/:id", async (req, res) => {
                 ]
             );
 
-
         await syncInvoiceStatus(
             client,
             newInvoiceId
         );
-
 
         if (
             oldInvoiceId !==
@@ -1838,9 +1765,7 @@ app.put("/api/payments/:id", async (req, res) => {
             );
         }
 
-
         await client.query("COMMIT");
-
 
         res.json({
             success: true,
@@ -1848,9 +1773,7 @@ app.put("/api/payments/:id", async (req, res) => {
             payment: result.rows[0]
         });
 
-
     } catch (error) {
-
         await client.query("ROLLBACK");
 
         console.error(
@@ -1868,18 +1791,14 @@ app.put("/api/payments/:id", async (req, res) => {
     }
 });
 
-
 // DELETE PAYMENT
 app.delete("/api/payments/:id", async (req, res) => {
-
     const client = await pool.connect();
 
     try {
-
         const { id } = req.params;
 
         await client.query("BEGIN");
-
 
         const existing =
             await client.query(
@@ -1892,9 +1811,7 @@ app.delete("/api/payments/:id", async (req, res) => {
                 [id]
             );
 
-
         if (existing.rows.length === 0) {
-
             await client.query("ROLLBACK");
 
             return res.status(404).json({
@@ -1903,12 +1820,10 @@ app.delete("/api/payments/:id", async (req, res) => {
             });
         }
 
-
         const invoiceId =
             Number(
                 existing.rows[0].invoice_id
             );
-
 
         await client.query(
             `DELETE FROM payments
@@ -1916,24 +1831,19 @@ app.delete("/api/payments/:id", async (req, res) => {
             [id]
         );
 
-
         await syncInvoiceStatus(
             client,
             invoiceId
         );
 
-
         await client.query("COMMIT");
-
 
         res.json({
             success: true,
             message: "Payment deleted successfully"
         });
 
-
     } catch (error) {
-
         await client.query("ROLLBACK");
 
         console.error(
@@ -1951,15 +1861,12 @@ app.delete("/api/payments/:id", async (req, res) => {
     }
 });
 
-
 /* =========================================================
    DASHBOARD
 ========================================================= */
 
 app.get("/api/dashboard", async (req, res) => {
-
     try {
-
         const incomeResult =
             await pool.query(
                 `SELECT
@@ -1967,7 +1874,6 @@ app.get("/api/dashboard", async (req, res) => {
                     AS total_income
                  FROM income`
             );
-
 
         const expenseResult =
             await pool.query(
@@ -1977,7 +1883,6 @@ app.get("/api/dashboard", async (req, res) => {
                  FROM expenses`
             );
 
-
         const customerResult =
             await pool.query(
                 `SELECT
@@ -1985,14 +1890,12 @@ app.get("/api/dashboard", async (req, res) => {
                  FROM customers`
             );
 
-
         const invoiceResult =
             await pool.query(
                 `SELECT
                     COUNT(*) AS total_invoices
                  FROM invoices`
             );
-
 
         const paymentResult =
             await pool.query(
@@ -2002,46 +1905,37 @@ app.get("/api/dashboard", async (req, res) => {
                  FROM payments`
             );
 
-
         const totalIncome =
             Number(
                 incomeResult.rows[0].total_income
             );
-
 
         const totalExpense =
             Number(
                 expenseResult.rows[0].total_expense
             );
 
-
         const netProfit =
             totalIncome -
             totalExpense;
-
 
         const totalCustomers =
             Number(
                 customerResult.rows[0].total_customers
             );
 
-
         const totalInvoices =
             Number(
                 invoiceResult.rows[0].total_invoices
             );
-
 
         const totalPayments =
             Number(
                 paymentResult.rows[0].total_payments
             );
 
-
         res.json({
-
             success: true,
-
             dashboard: {
                 totalIncome,
                 totalExpense,
@@ -2050,12 +1944,9 @@ app.get("/api/dashboard", async (req, res) => {
                 totalInvoices,
                 totalPayments
             }
-
         });
 
-
     } catch (error) {
-
         console.error(
             "Dashboard error:",
             error.message
@@ -2067,7 +1958,6 @@ app.get("/api/dashboard", async (req, res) => {
         });
     }
 });
-
 
 /* =========================================================
    API 404
@@ -2081,13 +1971,11 @@ app.use("/api", (req, res) => {
     });
 });
 
-
 /* =========================================================
    GLOBAL ERROR HANDLER
 ========================================================= */
 
 app.use((error, req, res, next) => {
-
     console.error(
         "Unhandled server error:",
         error
@@ -2103,7 +1991,6 @@ app.use((error, req, res, next) => {
     });
 });
 
-
 /* =========================================================
    START SERVER
 ========================================================= */
@@ -2117,11 +2004,10 @@ const server =
         "0.0.0.0",
         () => {
             console.log(
-                `Server running on http://localhost:${PORT}`
+                `Server running on port ${PORT}`
             );
         }
     );
-
 
 server.on(
     "error",
