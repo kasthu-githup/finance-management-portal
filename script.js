@@ -1,6 +1,6 @@
 /* =========================================
    FINANCE MANAGEMENT PORTAL
-   DASHBOARD - LOCAL + RENDER PRODUCTION
+   DASHBOARD
 ========================================= */
 
 
@@ -8,15 +8,10 @@
    API BASE URL
 ========================================= */
 
-const API_BASE =
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1"
-        ? "http://localhost:5000/api"
-        : "/api";
+// Local backend server
+const API_BASE = "http://localhost:5000/api";
 
-
-const DASHBOARD_API =
-    `${API_BASE}/dashboard`;
+const DASHBOARD_API = `${API_BASE}/dashboard`;
 
 
 /* =========================================
@@ -27,6 +22,12 @@ async function loadDashboard() {
 
     try {
 
+        console.log("=================================");
+        console.log("Loading Finance Dashboard...");
+        console.log("API URL:", DASHBOARD_API);
+        console.log("=================================");
+
+
         const response = await fetch(
             `${DASHBOARD_API}?t=${Date.now()}`,
             {
@@ -36,6 +37,12 @@ async function loadDashboard() {
                     "Accept": "application/json"
                 }
             }
+        );
+
+
+        console.log(
+            "Dashboard HTTP Status:",
+            response.status
         );
 
 
@@ -50,6 +57,12 @@ async function loadDashboard() {
 
         const data =
             await response.json();
+
+
+        console.log(
+            "Dashboard API Response:",
+            data
+        );
 
 
         if (!data.success) {
@@ -73,7 +86,7 @@ async function loadDashboard() {
 
 
         /* =========================================
-           VALUES
+           GET VALUES
         ========================================= */
 
         const totalIncome =
@@ -153,7 +166,9 @@ async function loadDashboard() {
         if (incomeElement) {
 
             incomeElement.textContent =
-                formatCurrency(totalIncome);
+                formatCurrency(
+                    totalIncome
+                );
 
         }
 
@@ -161,7 +176,9 @@ async function loadDashboard() {
         if (expenseElement) {
 
             expenseElement.textContent =
-                formatCurrency(totalExpense);
+                formatCurrency(
+                    totalExpense
+                );
 
         }
 
@@ -169,7 +186,9 @@ async function loadDashboard() {
         if (profitElement) {
 
             profitElement.textContent =
-                formatCurrency(netProfit);
+                formatCurrency(
+                    netProfit
+                );
 
         }
 
@@ -193,7 +212,9 @@ async function loadDashboard() {
         if (paymentsElement) {
 
             paymentsElement.textContent =
-                formatCurrency(totalPayments);
+                formatCurrency(
+                    totalPayments
+                );
 
         }
 
@@ -211,7 +232,9 @@ async function loadDashboard() {
         if (balanceElement) {
 
             balanceElement.textContent =
-                formatNumber(netProfit);
+                formatNumber(
+                    netProfit
+                );
 
 
             balanceElement.style.color =
@@ -235,7 +258,9 @@ async function loadDashboard() {
         if (netProfitCard) {
 
             netProfitCard.textContent =
-                formatCurrency(netProfit);
+                formatCurrency(
+                    netProfit
+                );
 
 
             netProfitCard.style.color =
@@ -283,6 +308,7 @@ async function loadDashboard() {
                 profitStatus.textContent =
                     "PROFIT";
 
+
                 profitStatus.style.color =
                     "#15803d";
 
@@ -293,6 +319,7 @@ async function loadDashboard() {
                 profitStatus.textContent =
                     "LOSS";
 
+
                 profitStatus.style.color =
                     "#dc2626";
 
@@ -302,6 +329,7 @@ async function loadDashboard() {
 
                 profitStatus.textContent =
                     "BREAK EVEN";
+
 
                 profitStatus.style.color =
                     "#6b7280";
@@ -329,7 +357,10 @@ async function loadDashboard() {
             if (totalIncome > 0) {
 
                 percentage =
-                    (netProfit / totalIncome) * 100;
+                    (
+                        netProfit /
+                        totalIncome
+                    ) * 100;
 
             }
 
@@ -413,7 +444,9 @@ async function loadDashboard() {
         if (summaryText) {
 
             summaryText.textContent =
-                `${formatCurrency(netProfit)} ${
+                `${formatCurrency(
+                    netProfit
+                )} ${
                     netProfit < 0
                         ? "net loss"
                         : "net profit"
@@ -479,21 +512,80 @@ async function loadDashboard() {
         }
 
 
+        /* =========================================
+           SUCCESS MESSAGE
+        ========================================= */
+
+        console.log(
+            "================================="
+        );
+
+        console.log(
+            "Dashboard loaded successfully"
+        );
+
+        console.log(
+            "Income:",
+            totalIncome
+        );
+
+        console.log(
+            "Expense:",
+            totalExpense
+        );
+
+        console.log(
+            "Net Profit:",
+            netProfit
+        );
+
+        console.log(
+            "Customers:",
+            totalCustomers
+        );
+
+        console.log(
+            "Invoices:",
+            totalInvoices
+        );
+
+        console.log(
+            "Payments:",
+            totalPayments
+        );
+
+        console.log(
+            "================================="
+        );
+
     }
 
     catch (error) {
 
         console.error(
-            "Dashboard Error:",
+            "================================="
+        );
+
+        console.error(
+            "DASHBOARD ERROR"
+        );
+
+        console.error(
             error
         );
 
+        console.error(
+            "API URL:",
+            DASHBOARD_API
+        );
 
-        /*
-         * Keep the dashboard UI alive.
-         * The API error will be visible
-         * in the browser console.
-         */
+        console.error(
+            "Make sure server.js is running on port 5000."
+        );
+
+        console.error(
+            "================================="
+        );
 
     }
 
@@ -512,14 +604,16 @@ function formatCurrency(value) {
 
     if (number < 0) {
 
-        return `-₹${Math.abs(number)
-            .toLocaleString("en-IN")}`;
+        return `-₹${Math.abs(
+            number
+        ).toLocaleString("en-IN")}`;
 
     }
 
 
-    return `₹${number
-        .toLocaleString("en-IN")}`;
+    return `₹${number.toLocaleString(
+        "en-IN"
+    )}`;
 
 }
 
@@ -536,14 +630,16 @@ function formatNumber(value) {
 
     if (number < 0) {
 
-        return `-${Math.abs(number)
-            .toLocaleString("en-IN")}`;
+        return `-${Math.abs(
+            number
+        ).toLocaleString("en-IN")}`;
 
     }
 
 
-    return number
-        .toLocaleString("en-IN");
+    return number.toLocaleString(
+        "en-IN"
+    );
 
 }
 
@@ -554,5 +650,13 @@ function formatNumber(value) {
 
 document.addEventListener(
     "DOMContentLoaded",
-    loadDashboard
+    function () {
+
+        console.log(
+            "Finance Dashboard initialized"
+        );
+
+        loadDashboard();
+
+    }
 );
